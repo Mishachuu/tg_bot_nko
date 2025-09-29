@@ -11,12 +11,41 @@ class RentalStatus(StrEnum):
 
 @dataclass(slots=True)
 class Equipment:
+    """
+    Класс оборудование
+ 
+    attributes
+    ----------
+    id : int | None
+        ID оборудования (Primary Key)
+    name : str | None
+        Название
+    city_id: int | None
+        Связный объект город в котором находится оборудование
+    landlord_id: int | None
+        ID арендодателя (связь с таблицей пользователей)
+    status: RentalStatus
+        Статус(available, booked, in_use, returned)
+    photo: str | bytes | None
+        str - либо URL либо file_id
+        bytes - само изображение в бинарном формате
+    category_id: int | None
+        Связная таблица категория (звук, свет, мебель)
+    is_approved: bool
+        Подтверждено ли администратором (по умолчанию False)
+    description : str | None
+        Описание
+    quantity: int 
+        Кол-во
+    created_at: datetime
+        Дата создания
+    """
     id: int | None = None
     name: str | None = None
     city_id: int | None = None
     landlord_id: int | None = None
     status: RentalStatus = RentalStatus.AVAILABLE
-    photo_url: str | None = None
+    photo: str | bytes | None = None
 
     category_id: int | None = None
     is_approved: bool = False
@@ -27,6 +56,9 @@ class Equipment:
     def to_dict(self) -> dict:
         """
         Обходит весь объект и приводит его к словарю
+
+        Return:
+            кортеж в формате json или почти json
         """
         d = asdict(self)
         d["status"] = self.status.value
