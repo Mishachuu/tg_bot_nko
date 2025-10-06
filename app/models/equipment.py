@@ -54,13 +54,7 @@ class Equipment:
     created_at: datetime | None = None
 
     def to_dict(self) -> dict:
-        """
-        Обходит весь объект и приводит его к словарю
-
-        Return:
-            кортеж в формате json или почти json
-        """
         d = asdict(self)
         d["status"] = self.status.value
-        d["created_at"] = self.created_at.isoformat() if self.created_at else None
+        # НЕ преобразуем created_at в строку, оставляем как datetime
         return d
