@@ -1,6 +1,7 @@
 import os
 import logging
 from telegram.ext import Application
+from app.setting import TOKEN
 
 # Настройка логирования
 logging.basicConfig(
@@ -23,7 +24,7 @@ def main():
     bot = EquipmentBot(equipment_service)
     
     # Создаем приложение бота
-    token = "8412664239:AAFfNwq7-IFDfuhHjersJcOvpFzOfRnnmVI"
+    token = TOKEN
     if not token:
         return
     
