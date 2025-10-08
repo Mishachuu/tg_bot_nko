@@ -1,5 +1,6 @@
 # app/services/equipment_service.py
 from __future__ import annotations
+from typing import List, Optional
 
 from typing import Iterable
 from datetime import datetime, timezone
@@ -97,3 +98,19 @@ class EquipmentService:
         updated = await self._repo.update(session, equipment_id, {"status": status.value})
         await session.commit()
         return updated
+    
+
+    # ========= for Mockup === 
+    async def get_user_equipment(self, user_id: int = 1) -> List[Equipment]:
+        all_equipment = await self._repo.get_all()
+        return [eq for eq in all_equipment if eq.landlord_id == user_id]
+
+    async def get_available_equipment(self, session=None, current_user_id: int = 1) -> List[Equipment]:
+        all_equipment = await self._repo.get_all()
+        return [
+            eq for eq in all_equipment 
+            if eq.landlord_id != current_user_id and eq.status == RentalStatus.AVAILABLE
+        ]
+
+    async def get_equipment_by_id(self, equipment_id: int = None) -> Optional[Equipment]:
+        return await self._repo.get_by_id(equipment_id)

@@ -24,8 +24,8 @@ class EquipmentCardFormatter:
         
         card_lines = [
             f"🎯 *{equipment.name or 'Без названия'}*",
-            f"📝 Описание: {equipment.description or 'Нет описания'}",
-            f"📦 Количество: {equipment.quantity} шт.",
+            f"📝 * _Описание:_ * {equipment.description or 'Нет описания'}",
+            f"📦 Количество: {equipment.quantity=} шт.",
             f"🏙️ Город: {cls._get_city_name(equipment.city_id)}",
             f"📂 Категория: {cls._get_category_name(equipment.category_id)}",
             f"📊 Статус: {cls.format_status(equipment.status)}",
