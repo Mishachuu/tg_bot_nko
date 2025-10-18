@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from telegram.ext import Application
 from app.setting import TOKEN
 
@@ -10,17 +11,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def main():
+async def main():
     """Основная функция запуска бота"""
     
     # Инициализация сервисов
     from app.repositories.equipment_repository import EquipmentRepository
     from app.services.equipment_service import EquipmentService
     from app.bot.equipment_bot import EquipmentBot
+    from app.db.tables import equipment_table
     
     # Создаем и настраиваем сервисы
-    equipment_repository = EquipmentRepository()
-    equipment_service = EquipmentService(equipment_repository)
+    repo = EquipmentRepository(equipment_table)
+    equipment_service = EquipmentService(repo)
     bot = EquipmentBot(equipment_service)
     
     # Создаем приложение бота
@@ -37,8 +39,7 @@ def main():
     print("🤖 Бот запускается...")
     print("⏹️  Для остановки нажмите Ctrl+C")
     
-    # Запускаем бота (блокирующий вызов)
     application.run_polling()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

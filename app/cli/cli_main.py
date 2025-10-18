@@ -10,7 +10,6 @@ async def ensure_db_and_seed():
     await init_db()
 
     async with AsyncSessionLocal() as session:
-        repo = EquipmentRepository(None)
         from app.db.tables import equipment_table
         repo = EquipmentRepository(equipment_table)
         service = EquipmentService(repo)

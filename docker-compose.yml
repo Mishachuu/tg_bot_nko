@@ -13,15 +13,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nko_user"]
-      interval: 5s
-      timeout: 5s
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 60s
       retries: 5
+      start_period: 80s
 
   app:
     build: .
     container_name: nko_bot_app
-    command: ["python", "app/cli/main.py"]
+    command: ["python", "run_bot_with_init.py"]
     depends_on:
       db:
         condition: service_healthy
