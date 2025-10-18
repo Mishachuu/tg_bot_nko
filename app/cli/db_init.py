@@ -1,11 +1,13 @@
 import asyncio
 from app.db.init_db import init_db
-from app.db.tables import category_table, equipment_table
+from app.db.tables import category_table, equipment_table, bookings_table
+from app.repositories.booking_repository import BookingRepository
+from app.services.booking_service import BookingService
 from app.repositories.category_repository import CategoryRepository
 from app.services.category_service import CategoryService
 from app.repositories.equipment_repository import EquipmentRepository
 from app.services.equipment_service import EquipmentService
-from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES
+from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES, MOCK_BOOKINGS
 from app.db.session import AsyncSessionLocal
 
 async def init_database():
@@ -17,10 +19,13 @@ async def init_database():
 
 async def seed_mockup_data():
     async with AsyncSessionLocal() as session:
+
+        booking_repo = BookingRepository(bookings_table)
+        booking_service = BookingService(booking_repo)
         cat_repo = CategoryRepository(category_table)
         cat_service = CategoryService(cat_repo)
         eq_repo = EquipmentRepository(equipment_table)
-        eq_service = EquipmentService(eq_repo)
+        eq_service = EquipmentService(eq_repo, booking_service)
 
         # 🔹 Сид категорий
         print("📂 Добавляем категории...")
@@ -32,8 +37,23 @@ async def seed_mockup_data():
             try:
                 await eq_service.create_equipment(session, eq)
             except Exception as e:
-                print("⚠️ Ошибка при добавлении:", e)
-        print("✅ Мокап загружен.")
+                print("⚠️ Ошибка при добавлении оборудования:", e)
+
+        # 🔹 Сид бронирований
+        print("📅 Добавляем бронирования...")
+        for booking in MOCK_BOOKINGS:
+            try:
+                await booking_service.create_booking(
+                    session,
+                    equipment_id=booking["equipment_id"],
+                    user_id=booking["user_id"],
+                    date_from=booking["date_from"],
+                    date_to=booking["date_to"],
+                )
+            except Exception as e:
+                print(f"⚠️ Ошибка при добавлении бронирования {booking['id']}: {e}")
+
+        print("✅ Мокап загружен (категории, оборудование, бронирования).")
 
 
 async def list_equipment():
@@ -41,8 +61,10 @@ async def list_equipment():
     from app.db.tables import equipment_table
 
     async with AsyncSessionLocal() as session:
+        booking_repo = BookingRepository(bookings_table)
+        booking_service = BookingService(booking_repo)
         repo = EquipmentRepository(equipment_table)
-        service = EquipmentService(repo)
+        service = EquipmentService(repo, booking_service)
 
         equipment_list = await service.list_equipment(session)
         if not equipment_list:

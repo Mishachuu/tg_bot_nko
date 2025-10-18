@@ -1,7 +1,6 @@
 from sqlalchemy import (
-    Table, Column, Integer, String, Boolean, DateTime, MetaData
+    Table, Column, Integer, String, Boolean, DateTime, MetaData, DateTime, ForeignKey
 )
-from sqlalchemy import ForeignKey
 
 metadata = MetaData()
 
@@ -26,4 +25,14 @@ equipment_table = Table(
     Column("description", String, nullable=True),
     Column("quantity", Integer, nullable=False, default=1),
     Column("created_at", DateTime, nullable=True),
+)
+
+bookings_table = Table(
+    "bookings",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("equipment_id", Integer, ForeignKey("equipment.id"), nullable=False),
+    Column("user_id", Integer, nullable=False),
+    Column("date_from", DateTime, nullable=False),
+    Column("date_to", DateTime, nullable=False),
 )

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.equipment import Equipment, RentalStatus
 from app.repositories.equipment_repository import EquipmentRepository
+from app.services.booking_service import BookingService
 
 
 class EquipmentService:
@@ -17,8 +18,9 @@ class EquipmentService:
     Этим слоем пользуются боты и будущий сайт — он не знает SQL и таблиц.
     """
 
-    def __init__(self, repo: EquipmentRepository):
+    def __init__(self, repo: EquipmentRepository, booking_service: BookingService):
         self._repo = repo
+        self._booking_service = booking_service
 
     # Правила/валидации
 
@@ -99,18 +101,30 @@ class EquipmentService:
         await session.commit()
         return updated
     
+    async def find_available_by_category_and_date(
+        self,
+        session: AsyncSession,
+        category_id: int,
+        date_from: datetime,
+        date_to: datetime,
+        *,
+        current_user_id: int = 1,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list[Equipment]:
+        """
+        Возвращает оборудование выбранной категории, свободное в диапазоне дат.
+        """
+        eq_list = await self._repo.get_by_category(session, category_id, limit=limit, offset=offset)
+        available = []
 
-    # ========= for Mockup === 
-    async def get_user_equipment(self, user_id: int = 1) -> List[Equipment]:
-        all_equipment = await self._repo.get_all()
-        return [eq for eq in all_equipment if eq.landlord_id == user_id]
+        for eq in eq_list:
+            if eq.landlord_id == current_user_id or eq.status != RentalStatus.AVAILABLE:
+                continue
+            if self._booking_service:
+                is_free = await self._booking_service.is_equipment_available(session, eq.id, date_from, date_to)
+                if not is_free:
+                    continue
+            available.append(eq)
 
-    async def get_available_equipment(self, session=None, current_user_id: int = 1) -> List[Equipment]:
-        all_equipment = await self._repo.get_all()
-        return [
-            eq for eq in all_equipment 
-            if eq.landlord_id != current_user_id and eq.status == RentalStatus.AVAILABLE
-        ]
-
-    async def get_equipment_by_id(self, equipment_id: int = None) -> Optional[Equipment]:
-        return await self._repo.get_by_id(equipment_id)
+        return available

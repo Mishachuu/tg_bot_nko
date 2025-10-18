@@ -6,6 +6,13 @@ from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.db.session import AsyncSessionLocal
 from app.repositories.category_repository import CategoryRepository
 from app.db.tables import category_table, equipment_table
+from datetime import datetime
+from app.services.booking_service import BookingService
+from app.repositories.booking_repository import BookingRepository
+from app.db.tables import bookings_table
+from datetime import timedelta
+# from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP  # Убрал импорт календаря
+
 
 class EquipmentBot:
     def __init__(self, equipment_service: EquipmentService):
@@ -13,8 +20,6 @@ class EquipmentBot:
         self.formatter = EquipmentCardFormatter()
         self.users = {1: "Иван Петров", 2: "Анна Сидорова", 3: "Петр Иванов"}
 
-        # Состояния и временный выбор пользователя:
-        # user_id -> {"state": str, "selected_categories": set}
         self._user_state = {}
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -26,106 +31,91 @@ class EquipmentBot:
         )
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        text = update.message.text
+        text = update.message.text.strip()
         user_id = update.effective_user.id
 
-        user_data = self._user_state.get(user_id, {"state": None, "selected_categories": set()})
+        user_data = self._user_state.get(user_id, {
+            "state": None,
+            "selected_categories": set(),
+            "date_from": None,
+            "date_to": None,
+        })
 
-        if text == "📦 Доступное оборудование":
-            # Сбрасываем выбор и переходим в режим выбора категорий
+        # Если пользователь нажал "📦 Доступное оборудование" или "🔄 Выбрать категории и даты"
+        if text in ["📦 Доступное оборудование", "🔄 Выбрать категории и даты"]:
             user_data["state"] = "choosing_categories"
             user_data["selected_categories"] = set()
+            user_data["date_from"] = None
+            user_data["date_to"] = None
             self._user_state[user_id] = user_data
             await self.ask_categories(update, context, user_data["selected_categories"])
+            return
 
-        elif user_data["state"] == "choosing_categories":
+        # Обработка состояний
+        if user_data["state"] == "choosing_categories":
             if text == "🔍 Найти":
-                # Поиск по выбранным категориям
                 if not user_data["selected_categories"]:
-                    await update.message.reply_text("❗ Выберите хотя бы одну категорию перед поиском.")
+                    await update.message.reply_text("❗ Выберите хотя бы одну категорию.")
                     return
-                await self.show_equipment_by_categories(update, context, user_data["selected_categories"])
-                # Завершаем выбор категорий
-                self._user_state.pop(user_id, None)
-            else:
-                # Обработка выбора / отмены выбора категории
-                await self.toggle_category_selection(update, context, text, user_data)
-                # обновляем состояние
+                user_data["state"] = "entering_date_from"
                 self._user_state[user_id] = user_data
-        else:
-            await update.message.reply_text("🤔 Не понимаю команду. Используйте кнопки меню.")
-
-    async def ask_categories(self, update: Update, context: ContextTypes.DEFAULT_TYPE, selected_categories: set):
-        async with AsyncSessionLocal() as session:
-            cat_repo = CategoryRepository(category_table)
-            cat_service = CategoryService(cat_repo)
-            categories = await cat_service.list_categories(session)
-
-        if not categories:
-            await update.message.reply_text("⚠️ В базе нет категорий.")
-            return
-
-        # Формируем клавиатуру с отметками выбранных категорий
-        keyboard = []
-        for c in categories:
-            name = c["name"]
-            if c["id"] in selected_categories:
-                display_name = f"✅ {name}"
+                await update.message.reply_text("Введите дату начала аренды в формате ГГГГ.ММ.ДД (например, 2025.10.18):")
             else:
-                display_name = name
-            keyboard.append([display_name])
-
-        # Добавляем кнопку "Найти"
-        keyboard.append(["🔍 Найти"])
-
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
-        await update.message.reply_text("📂 Выберите категории (можно несколько):", reply_markup=reply_markup)
-
-    async def toggle_category_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, user_data: dict):
-        # Убираем галочку из названия, если есть
-        if text.startswith("✅ "):
-            category_name = text[2:].strip()
-        else:
-            category_name = text.strip()
-
-        async with AsyncSessionLocal() as session:
-            cat_repo = CategoryRepository(category_table)
-            cat_service = CategoryService(cat_repo)
-            categories = await cat_service.list_categories(session)
-
-        # Найдем категорию по имени
-        category = next((c for c in categories if c["name"] == category_name), None)
-        if not category:
-            await update.message.reply_text("❌ Неизвестная категория. Попробуйте снова.")
+                await self.toggle_category_selection(update, context, text, user_data)
             return
 
-        cat_id = category["id"]
-        if cat_id in user_data["selected_categories"]:
-            user_data["selected_categories"].remove(cat_id)
-        else:
-            user_data["selected_categories"].add(cat_id)
+        if user_data["state"] == "entering_date_from":
+            try:
+                user_data["date_from"] = datetime.strptime(text, "%Y.%m.%d")
+                user_data["state"] = "entering_date_to"
+                self._user_state[user_id] = user_data
+                await update.message.reply_text("Введите дату окончания аренды в формате ГГГГ.ММ.ДД:")
+            except ValueError:
+                await update.message.reply_text("⚠️ Неверный формат. Введите дату как ГГГГ.ММ.ДД.")
+            return
 
-        # Обновляем клавиатуру с новыми отметками
-        await self.ask_categories(update, context, user_data["selected_categories"])
+        if user_data["state"] == "entering_date_to":
+            try:
+                user_data["date_to"] = datetime.strptime(text, "%Y.%m.%d")
+                if user_data["date_to"] < user_data["date_from"]:
+                    await update.message.reply_text("⚠️ Дата окончания не может быть раньше даты начала.")
+                    return
 
-    async def show_equipment_by_categories(self, update: Update, context: ContextTypes.DEFAULT_TYPE, category_ids: set):
+                await self.show_equipment_by_categories_and_date(update, context, user_data)
+                self._user_state.pop(user_id, None)  # Сброс состояния
+
+            except ValueError:
+                await update.message.reply_text("⚠️ Неверный формат даты. Введите в формате ГГГГ.ММ.ДД.")
+            return
+
+        await update.message.reply_text("🤔 Не понимаю команду. Используйте кнопки меню.")
+
+
+    async def show_equipment_by_categories_and_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
         async with AsyncSessionLocal() as session:
-            all_equipment = []
-            for cat_id in category_ids:
-                eqs = await self.equipment_service.find_by_category(session, cat_id)
-                all_equipment.extend(eqs)
 
-        available_equipment = [
-            eq for eq in all_equipment
-            if eq.landlord_id != 1 and eq.status.value == "available"
-        ]
+            available_equipment = []
+            for cat_id in user_data["selected_categories"]:
+                eqs = await self.equipment_service.find_available_by_category_and_date(
+                    session,
+                    cat_id,
+                    user_data["date_from"],
+                    user_data["date_to"],
+                    current_user_id=1,
+                )
+                available_equipment.extend(eqs)
 
         if not available_equipment:
-            await update.message.reply_text("😔 Нет доступного оборудования по выбранным категориям.")
+            keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
+            await update.message.reply_text(
+                "😔 Нет свободного оборудования на выбранные даты.",
+                reply_markup=keyboard
+            )
             return
 
+        # Сообщаем об оборудовании
         await update.message.reply_text(
-            f"📦 Доступное оборудование по выбранным категориям ({len(available_equipment)} позиций):"
+            f"📦 Доступное оборудование ({len(available_equipment)} позиций):"
         )
 
         for equipment in available_equipment:
@@ -139,6 +129,61 @@ class EquipmentBot:
                 parse_mode='Markdown',
                 reply_markup=keyboard
             )
+
+        restart_keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
+        await update.message.reply_text(
+            "Выберите действие",
+            reply_markup=restart_keyboard
+        )
+
+
+    async def ask_categories(self, update: Update, context: ContextTypes.DEFAULT_TYPE, selected_categories: set):
+        async with AsyncSessionLocal() as session:
+            cat_repo = CategoryRepository(category_table)
+            cat_service = CategoryService(cat_repo)
+            categories = await cat_service.list_categories(session)
+
+        if not categories:
+            await update.message.reply_text("⚠️ В базе нет категорий.")
+            return
+
+        keyboard = []
+        for c in categories:
+            name = c["name"]
+            if c["id"] in selected_categories:
+                display_name = f"✅ {name}"
+            else:
+                display_name = name
+            keyboard.append([display_name])
+
+        keyboard.append(["🔍 Найти"])
+
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text("📂 Выберите категории (можно несколько):", reply_markup=reply_markup)
+
+    async def toggle_category_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, user_data: dict):
+        if text.startswith("✅ "):
+            category_name = text[2:].strip()
+        else:
+            category_name = text.strip()
+
+        async with AsyncSessionLocal() as session:
+            cat_repo = CategoryRepository(category_table)
+            cat_service = CategoryService(cat_repo)
+            categories = await cat_service.list_categories(session)
+
+        category = next((c for c in categories if c["name"] == category_name), None)
+        if not category:
+            await update.message.reply_text("❌ Неизвестная категория. Попробуйте снова.")
+            return
+
+        cat_id = category["id"]
+        if cat_id in user_data["selected_categories"]:
+            user_data["selected_categories"].remove(cat_id)
+        else:
+            user_data["selected_categories"].add(cat_id)
+
+        await self.ask_categories(update, context, user_data["selected_categories"])
 
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -161,5 +206,12 @@ class EquipmentBot:
         return [
             CommandHandler("start", self.start),
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message),
-            CallbackQueryHandler(self.handle_callback)
+
+            # Убираем обработчик календаря
+            # CallbackQueryHandler(self.handle_calendar_callback, pattern=r"^(y|m|d)\d+.*$"),
+
+            CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)"),
         ]
+
+    # Убираем ask_date_from_calendar, так как теперь просто текстовый ввод
+
