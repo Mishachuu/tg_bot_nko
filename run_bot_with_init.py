@@ -1,19 +1,20 @@
 import asyncio
 import sys
 import os
+from app.setting import MOCKUP_REQUIRED
 
 # Добавляем корневую директорию в путь для импортов
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.cli.cli_main import cli_main
+from app.cli.db_init_main import db_init_main
 from app.cli.bot_main import main as bot_main
 
 async def main():
     """Запускает инициализацию БД, затем бота"""
     print("🚀 Запуск инициализации базы данных...")
-    await cli_main()
+    await db_init_main(MOCKUP_REQUIRED)
     print("🎯 Запуск телеграм бота...")
-    bot_main()
+    await bot_main()
 
 if __name__ == "__main__":
     asyncio.run(main())

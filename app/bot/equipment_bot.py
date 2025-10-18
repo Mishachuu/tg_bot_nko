@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, CallbackQ
 from app.services.equipment_service import EquipmentService
 from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.seed.mockup_equipment import create_mock_data
+from app.db.session import AsyncSessionLocal
 
 class EquipmentBot:
     def __init__(self, equipment_service: EquipmentService):
@@ -36,8 +37,9 @@ class EquipmentBot:
             await update.message.reply_text("🤔 Не понимаю команду. Используйте кнопки меню.")
     
     async def show_my_equipment(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # Используем моки напрямую для демо
-        all_equipment = await create_mock_data()
+        async with AsyncSessionLocal() as session:
+            all_equipment = await self.equipment_service.list_equipment(session)
+
         my_equipment = [eq for eq in all_equipment if eq.landlord_id == 1]
         
         if not my_equipment:
@@ -54,7 +56,8 @@ class EquipmentBot:
             await update.message.reply_text(card_text, parse_mode='Markdown')
     
     async def show_available_equipment(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        all_equipment = await create_mock_data()
+        async with AsyncSessionLocal() as session:
+            all_equipment = await self.equipment_service.list_equipment(session)
         available_equipment = [
             eq for eq in all_equipment 
             if eq.landlord_id != 1 and eq.status.value == "available"
