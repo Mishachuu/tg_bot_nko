@@ -5,6 +5,13 @@ from sqlalchemy import ForeignKey
 
 metadata = MetaData()
 
+category_table = Table(
+    "categories",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String, nullable=False, unique=True),
+)
+
 equipment_table = Table(
     "equipment",
     metadata,

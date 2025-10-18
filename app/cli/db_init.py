@@ -1,10 +1,12 @@
 import asyncio
 from app.db.init_db import init_db
-from app.db.session import AsyncSessionLocal
+from app.db.tables import category_table, equipment_table
+from app.repositories.category_repository import CategoryRepository
+from app.services.category_service import CategoryService
 from app.repositories.equipment_repository import EquipmentRepository
 from app.services.equipment_service import EquipmentService
-from app.seed.mockup import MOCK_EQUIPMENT
-
+from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES
+from app.db.session import AsyncSessionLocal
 
 async def init_database():
     """Создаёт таблицы в БД."""
@@ -14,21 +16,24 @@ async def init_database():
 
 
 async def seed_mockup_data():
-    """Загружает тестовые данные (мокап)."""
-    from app.db.tables import equipment_table
-
     async with AsyncSessionLocal() as session:
-        repo = EquipmentRepository(equipment_table)
-        service = EquipmentService(repo)
+        cat_repo = CategoryRepository(category_table)
+        cat_service = CategoryService(cat_repo)
+        eq_repo = EquipmentRepository(equipment_table)
+        eq_service = EquipmentService(eq_repo)
 
-        print("📦 Загружаем мокап данных...")
+        # 🔹 Сид категорий
+        print("📂 Добавляем категории...")
+        await cat_service.seed_categories(session, [c["name"] for c in CATEGORIES])
+
+        # 🔹 Сид оборудования
+        print("📦 Добавляем оборудование...")
         for eq in MOCK_EQUIPMENT:
             try:
-                await service.create_equipment(session, eq)
+                await eq_service.create_equipment(session, eq)
             except Exception as e:
-                print(f"⚠️ Ошибка при добавлении оборудования {eq.name}: {e}")
-
-        print("✅ Мокап успешно загружен.")
+                print("⚠️ Ошибка при добавлении:", e)
+        print("✅ Мокап загружен.")
 
 
 async def list_equipment():

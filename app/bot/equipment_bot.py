@@ -2,7 +2,6 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 from app.services.equipment_service import EquipmentService
 from app.bot.equipment_card_formatter import EquipmentCardFormatter
-from app.seed.mockup_equipment import create_mock_data
 from app.db.session import AsyncSessionLocal
 
 class EquipmentBot:
