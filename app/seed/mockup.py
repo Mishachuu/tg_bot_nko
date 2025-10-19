@@ -171,21 +171,21 @@ MOCK_BOOKINGS = [
         "id": 1,
         "equipment_id": 2,  # Сабвуфер JBL
         "user_id": 3,       # Дмитрий
-        "date_from": "10.02.2025",
-        "date_to": "12.02.2025",
+        "date_from": datetime(2025, 2, 10),
+        "date_to": datetime(2025, 2, 12),
     },
     {
         "id": 2,
         "equipment_id": 8,  # Колонки RCF ART
         "user_id": 4,       # Мария
-        "date_from": "05.03.2025",
-        "date_to": "08.03.2025",
+        "date_from": datetime(2025, 3, 5),
+        "date_to": datetime(2025, 3, 8),
     },
     {
         "id": 3,
         "equipment_id": 5,  # LED панель
         "user_id": 2,       # Анна
-        "date_from": "10.10.2025",
-        "date_to": "02.11.2025",
+        "date_from": datetime(2025, 1, 20),
+        "date_to": datetime(2025, 1, 22),
     },
 ]

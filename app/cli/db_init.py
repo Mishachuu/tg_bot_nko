@@ -30,6 +30,9 @@ async def seed_mockup_data():
         # 🔹 Сид категорий
         print("📂 Добавляем категории...")
         await cat_service.seed_categories(session, [c["name"] for c in CATEGORIES])
+        print("💾 Сохраняем изменения...")
+        await session.commit()
+
 
         # 🔹 Сид оборудования
         print("📦 Добавляем оборудование...")
@@ -38,6 +41,9 @@ async def seed_mockup_data():
                 await eq_service.create_equipment(session, eq)
             except Exception as e:
                 print("⚠️ Ошибка при добавлении оборудования:", e)
+
+        print("💾 Сохраняем изменения...")
+        await session.commit()
 
         # 🔹 Сид бронирований
         print("📅 Добавляем бронирования...")
@@ -53,6 +59,8 @@ async def seed_mockup_data():
             except Exception as e:
                 print(f"⚠️ Ошибка при добавлении бронирования {booking['id']}: {e}")
 
+        print("💾 Сохраняем изменения...")
+        await session.commit()
         print("✅ Мокап загружен (категории, оборудование, бронирования).")
 
 

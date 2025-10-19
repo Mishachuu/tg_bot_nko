@@ -22,7 +22,7 @@ class BookingService:
             "date_to": date_to,
         }
 
-        await self.repo.add(session, booking)
+        await self.repo.create(session, booking)
         await session.flush()  # чтобы зафиксировать ID
         return booking
 
