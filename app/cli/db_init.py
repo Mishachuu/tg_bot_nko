@@ -1,13 +1,15 @@
 import asyncio
 from app.db.init_db import init_db
-from app.db.tables import category_table, equipment_table, bookings_table
+from app.db.tables import category_table, equipment_table, bookings_table, equipment_photos_table
 from app.repositories.booking_repository import BookingRepository
 from app.services.booking_service import BookingService
 from app.repositories.category_repository import CategoryRepository
 from app.services.category_service import CategoryService
 from app.repositories.equipment_repository import EquipmentRepository
 from app.services.equipment_service import EquipmentService
-from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES, MOCK_BOOKINGS
+from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
+from app.services.equipment_photo_service import EquipmentPhotoService
+from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES, MOCK_BOOKINGS, MOCK_EQUIPMENT_PHOTOS
 from app.db.session import AsyncSessionLocal
 
 async def init_database():
@@ -61,6 +63,23 @@ async def seed_mockup_data():
 
         print("💾 Сохраняем изменения...")
         await session.commit()
+
+         # 🔹 Сид фото
+        print("🖼 Добавляем фото оборудования...")
+        photo_repo = EquipmentPhotoRepository(equipment_photos_table)
+        photo_service = EquipmentPhotoService(photo_repo)
+
+        for photo in MOCK_EQUIPMENT_PHOTOS:
+            try:
+                await photo_service.add_photo(
+                    session,
+                    equipment_id=photo["equipment_id"],
+                    filename=photo["filename"],
+                    content=photo["content"],
+                )
+            except Exception as e:
+                print(f"⚠️ Ошибка при добавлении фото: {e}")
+
         print("✅ Мокап загружен (категории, оборудование, бронирования).")
 
 

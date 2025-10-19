@@ -1,17 +1,20 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+from app.services.equipment_photo_service import EquipmentPhotoService
 from app.services.equipment_service import EquipmentService
 from app.services.category_service import CategoryService
 from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.db.session import AsyncSessionLocal
 from app.repositories.category_repository import CategoryRepository
-from app.db.tables import category_table, equipment_table
+from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
+from app.db.tables import category_table, equipment_table, equipment_photos_table
 from datetime import datetime
 from app.services.booking_service import BookingService
 from app.repositories.booking_repository import BookingRepository
 from app.db.tables import bookings_table
 from datetime import timedelta
-# from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP  # Убрал импорт календаря
+import io
+from telegram import InputFile
 
 
 class EquipmentBot:
@@ -90,52 +93,55 @@ class EquipmentBot:
 
         await update.message.reply_text("🤔 Не понимаю команду. Используйте кнопки меню.")
 
-
     async def show_equipment_by_categories_and_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
         async with AsyncSessionLocal() as session:
-
             available_equipment = []
             for cat_id in user_data["selected_categories"]:
                 eqs = await self.equipment_service.find_available_by_category_and_date(
                     session,
                     cat_id,
                     user_data["date_from"],
-                    user_data["date_to"],
-                    current_user_id=1,
+                    user_data["date_to"]
                 )
                 available_equipment.extend(eqs)
 
-        if not available_equipment:
-            keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
-            await update.message.reply_text(
-                "😔 Нет свободного оборудования на выбранные даты.",
-                reply_markup=keyboard
-            )
-            return
+            photo_repo = EquipmentPhotoRepository(equipment_photos_table)
+            photo_service = EquipmentPhotoService(photo_repo)
 
-        # Сообщаем об оборудовании
-        await update.message.reply_text(
-            f"📦 Доступное оборудование ({len(available_equipment)} позиций):"
-        )
+            if not available_equipment:
+                keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
+                await update.message.reply_text(
+                    "😔 Нет свободного оборудования на выбранные даты.",
+                    reply_markup=keyboard
+                )
+                return
 
-        for equipment in available_equipment:
-            card_text = self.formatter.create_equipment_card(
-                equipment,
-                self.users.get(equipment.landlord_id, "Неизвестно")
-            )
-            keyboard = self.formatter.create_interaction_keyboard(equipment.id)
-            await update.message.reply_text(
-                card_text,
-                parse_mode='Markdown',
-                reply_markup=keyboard
-            )
+            await update.message.reply_text(f"📦 Доступное оборудование ({len(available_equipment)} позиций):")
 
-        restart_keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
-        await update.message.reply_text(
-            "Выберите действие",
-            reply_markup=restart_keyboard
-        )
+            for eq in available_equipment:
+                photos = await photo_service.list_photos(session, eq.id)
+                card_text = self.formatter.create_equipment_card(eq, self.users.get(eq.landlord_id, "Неизвестно"))
+                keyboard = self.formatter.create_interaction_keyboard(eq.id)
 
+                if photos:
+                    first_photo = photos[0]["content"]
+                    if isinstance(first_photo, memoryview):
+                        first_photo = first_photo.tobytes()
+                    await update.message.reply_photo(
+                        photo=InputFile(io.BytesIO(first_photo), filename=f"eq_{eq.id}.jpg"),
+                        caption=card_text,
+                        parse_mode='Markdown',
+                        reply_markup=keyboard
+                    )
+                else:
+                    await update.message.reply_text(
+                        card_text,
+                        parse_mode='Markdown',
+                        reply_markup=keyboard
+                    )
+
+            restart_keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
+            await update.message.reply_text("Выберите действие", reply_markup=restart_keyboard)
 
     async def ask_categories(self, update: Update, context: ContextTypes.DEFAULT_TYPE, selected_categories: set):
         async with AsyncSessionLocal() as session:
@@ -206,12 +212,7 @@ class EquipmentBot:
         return [
             CommandHandler("start", self.start),
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message),
-
-            # Убираем обработчик календаря
-            # CallbackQueryHandler(self.handle_calendar_callback, pattern=r"^(y|m|d)\d+.*$"),
-
             CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)"),
         ]
 
-    # Убираем ask_date_from_calendar, так как теперь просто текстовый ввод
 

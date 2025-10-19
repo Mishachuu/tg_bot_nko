@@ -108,7 +108,6 @@ class EquipmentService:
         date_from: datetime,
         date_to: datetime,
         *,
-        current_user_id: int = 1,
         limit: int = 100,
         offset: int = 0
     ) -> list[Equipment]:
@@ -119,7 +118,7 @@ class EquipmentService:
         available = []
 
         for eq in eq_list:
-            if eq.landlord_id == current_user_id or eq.status != RentalStatus.AVAILABLE:
+            if eq.status != RentalStatus.AVAILABLE:
                 continue
             if self._booking_service:
                 is_free = await self._booking_service.is_equipment_available(session, eq.id, date_from, date_to)

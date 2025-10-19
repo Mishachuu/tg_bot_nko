@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Table, Column, Integer, String, Boolean, DateTime, MetaData, DateTime, ForeignKey
+    Table, Column, Integer, String, Boolean, DateTime, MetaData, DateTime, ForeignKey, LargeBinary
 )
 
 metadata = MetaData()
@@ -25,6 +25,15 @@ equipment_table = Table(
     Column("description", String, nullable=True),
     Column("quantity", Integer, nullable=False, default=1),
     Column("created_at", DateTime, nullable=True),
+)
+
+equipment_photos_table = Table(
+    "equipment_photos",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("equipment_id", Integer, ForeignKey("equipment.id", ondelete="CASCADE"), nullable=False),
+    Column("filename", String, nullable=True),   # оригинальное имя файла
+    Column("content", LargeBinary, nullable=False),  # бинарное содержимое
 )
 
 bookings_table = Table(

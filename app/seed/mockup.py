@@ -1,5 +1,12 @@
 from datetime import datetime
+from pathlib import Path
 from app.models.equipment import Equipment, RentalStatus
+
+BASE_DIR = Path(__file__).parent
+PLUG_PATH = BASE_DIR / "plug.jpg"
+
+with open(PLUG_PATH, "rb") as f:
+    PLUG_BYTES = f.read()
 
 # ---------- Города ----------
 CITIES = [
@@ -164,6 +171,15 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 10, 12, 0, 0),
     ),
 ]
+
+# ---------- Фото оборудования ----------
+# для всех, у кого нет фото, ставим plug.png
+MOCK_EQUIPMENT_PHOTOS = [
+    {"id": 1 ,"equipment_id": 1, "filename": "plug.png", "content": PLUG_BYTES},
+    {"id": 2 ,"equipment_id": 2, "filename": "plug.png", "content": PLUG_BYTES},
+    {"id": 3 ,"equipment_id": 2, "filename": "plug.png", "content": PLUG_BYTES},
+]
+
 
 # ---------- Бронирования ----------
 MOCK_BOOKINGS = [
