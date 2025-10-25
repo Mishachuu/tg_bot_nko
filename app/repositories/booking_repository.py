@@ -1,5 +1,5 @@
 from sqlalchemy import select, and_
-from app.db.tables import bookings_table
+from app.db.tables import bookings_table, equipment_table
 
 
 class BookingRepository:
@@ -52,3 +52,13 @@ class BookingRepository:
         )
         result = await session.execute(query)
         return result.mappings().all()
+
+    async def get_by_landlord(self, session, landlord_id: int):
+        """Возвращает все бронирования для оборудования, принадлежащего арендодателю."""
+        stmt = (
+            select(self.table)
+            .join(equipment_table, self.table.c.equipment_id == equipment_table.c.id)
+            .where(equipment_table.c.landlord_id == landlord_id)
+        )
+        result = await session.execute(stmt)
+        return [dict(row._mapping) for row in result]
