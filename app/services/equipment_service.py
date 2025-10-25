@@ -32,8 +32,8 @@ class EquipmentService:
         - created_at проставляем, если не задан
         - quantity минимум 1
         """
-        eq.is_approved = False
-        eq.status = RentalStatus.AVAILABLE
+        # eq.is_approved = False
+        # eq.status = RentalStatus.AVAILABLE
         eq.created_at = eq.created_at or datetime.now(tz=timezone.utc).replace(tzinfo=None)  # храним naive UTC
         if not eq.quantity or eq.quantity < 1:
             eq.quantity = 1
@@ -99,24 +99,61 @@ class EquipmentService:
         await session.commit()
         return updated
     
-    async def find_available_by_category_and_date(
+    async def find_by_location(
         self,
         session: AsyncSession,
-        category_id: int,
-        date_from: datetime,
-        date_to: datetime,
+        latitude: float,
+        longitude: float,
+        radius_km: float,
         *,
         limit: int = 100,
         offset: int = 0
     ) -> list[Equipment]:
         """
-        Возвращает оборудование выбранной категории, свободное в диапазоне дат.
+        Возвращает список оборудования поблизости от указанных координат.
         """
-        eq_list = await self._repo.get_by_category(session, category_id, limit=limit, offset=offset)
+        return await self._repo.get_by_location(
+            session,
+            latitude=latitude,
+            longitude=longitude,
+            radius_km=radius_km,
+            limit=limit,
+            offset=offset,
+        )
+    
+    async def find_available_by_category_date_and_location(
+        self,
+        session: AsyncSession,
+        category_id: int,
+        date_from: datetime,
+        date_to: datetime,
+        latitude: float,
+        longitude: float,
+        radius_km: float,
+        *,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list[Equipment]:
+        """
+        Возвращает оборудование выбранной категории, свободное в диапазоне дат и находящееся в указанном радиусе.
+        """
+        # Получаем оборудование по категории и локации
+        eq_list = await self._repo.get_by_category_and_location(
+            session, 
+            category_id, 
+            latitude=latitude, 
+            longitude=longitude, 
+            radius_km=radius_km,
+            limit=limit, 
+            offset=offset
+        )
+        
         available = []
 
         for eq in eq_list:
             if eq.status != RentalStatus.AVAILABLE:
+                print(eq.status)
+                print(f"   ❌ Пропущено: статус не AVAILABLE")
                 continue
             if self._booking_service:
                 is_free = await self._booking_service.is_equipment_available(session, eq.id, date_from, date_to)

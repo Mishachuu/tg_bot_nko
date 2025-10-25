@@ -46,12 +46,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[0]["id"],
         landlord_id=LANDLORDS[0]["id"],
         status=RentalStatus.AVAILABLE,
-        photo="tg://photo/1",
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
         description="10-канальный аналоговый микшер с эффектами.",
         quantity=1,
         created_at=datetime(2025, 1, 1, 12, 0, 0),
+        latitude=55.7558,  # Москва
+        longitude=37.6173
     ),
     Equipment(
         id=2,
@@ -59,12 +60,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[1]["id"],
         landlord_id=LANDLORDS[0]["id"],
         status=RentalStatus.BOOKED,
-        photo="tg://photo/2",
         category_id=CATEGORIES[0]["id"],
         is_approved=False,
         description='18" активный сабвуфер.',
         quantity=2,
         created_at=datetime(2025, 1, 2, 12, 0, 0),
+        latitude=53.195,  # Самара
+        longitude=50.100
     ),
     Equipment(
         id=3,
@@ -72,12 +74,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[2]["id"],
         landlord_id=LANDLORDS[1]["id"],
         status=RentalStatus.AVAILABLE,
-        photo="/img/slimpar56.jpg",
         category_id=CATEGORIES[1]["id"],
         is_approved=True,
         description="Компактный RGB прожектор, DMX.",
         quantity=8,
         created_at=datetime(2025, 1, 3, 12, 0, 0),
+        latitude=55.7558,  # Москва
+        longitude=37.6173
     ),
     Equipment(
         id=4,
@@ -85,12 +88,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[3]["id"],
         landlord_id=LANDLORDS[1]["id"],
         status=RentalStatus.RETURNED,
-        photo=None,
         category_id=CATEGORIES[2]["id"],
         is_approved=True,
         description="Телескопическая стойка, классика сцены.",
         quantity=6,
         created_at=datetime(2025, 1, 4, 12, 0, 0),
+        latitude=53.195,  # Самара
+        longitude=50.100
     ),
     Equipment(
         id=5,
@@ -98,12 +102,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[4]["id"],
         landlord_id=LANDLORDS[1]["id"],
         status=RentalStatus.IN_USE,
-        photo="tg://photo/5",
         category_id=CATEGORIES[1]["id"],
         is_approved=False,
         description="Биколор панель для интервью.",
         quantity=3,
         created_at=datetime(2025, 1, 5, 12, 0, 0),
+        latitude=55.7558,  # Москва
+        longitude=37.6173
     ),
     Equipment(
         id=6,
@@ -111,12 +116,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[5]["id"],
         landlord_id=LANDLORDS[2]["id"],
         status=RentalStatus.AVAILABLE,
-        photo="/img/chair.jpg",
         category_id=CATEGORIES[2]["id"],
         is_approved=True,
         description="Простой складной стул для зрителей.",
         quantity=40,
         created_at=datetime(2025, 1, 6, 12, 0, 0),
+        latitude=53.195,  # Самара
+        longitude=50.100
     ),
     Equipment(
         id=7,
@@ -124,12 +130,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[6]["id"],
         landlord_id=LANDLORDS[2]["id"],
         status=RentalStatus.AVAILABLE,
-        photo=None,
         category_id=CATEGORIES[1]["id"],
         is_approved=False,
         description="Базовый контроллер на 192 канала.",
         quantity=1,
         created_at=datetime(2025, 1, 7, 12, 0, 0),
+        latitude=55.7558,  # Москва
+        longitude=37.6173
     ),
     Equipment(
         id=8,
@@ -137,12 +144,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[7]["id"],
         landlord_id=LANDLORDS[3]["id"],
         status=RentalStatus.BOOKED,
-        photo="tg://photo/8",
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
         description='700W, 12" драйвер, ровный звук.',
         quantity=2,
         created_at=datetime(2025, 1, 8, 12, 0, 0),
+        latitude=53.195,  # Самара
+        longitude=50.100
     ),
     Equipment(
         id=9,
@@ -150,12 +158,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[8]["id"],
         landlord_id=LANDLORDS[4]["id"],
         status=RentalStatus.IN_USE,
-        photo="/img/sofa2.jpg",
         category_id=CATEGORIES[2]["id"],
         is_approved=False,
         description="Комфорт для лаунж-зоны или гримёрки.",
         quantity=1,
         created_at=datetime(2025, 1, 9, 12, 0, 0),
+        latitude=55.7558,  # Москва
+        longitude=37.6173
     ),
     Equipment(
         id=10,
@@ -163,12 +172,13 @@ MOCK_EQUIPMENT = [
         city_id=CITIES[9]["id"],
         landlord_id=LANDLORDS[4]["id"],
         status=RentalStatus.RETURNED,
-        photo=None,
         category_id=CATEGORIES[1]["id"],
         is_approved=True,
         description="Стойка + диммерный блок на 4 канала.",
         quantity=2,
         created_at=datetime(2025, 1, 10, 12, 0, 0),
+        latitude=53.195,  # Самара
+        longitude=50.100
     ),
 ]
 

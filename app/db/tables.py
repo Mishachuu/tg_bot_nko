@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Table, Column, Integer, String, Boolean, DateTime, MetaData, DateTime, ForeignKey, LargeBinary
+    Table, Column, Integer, String, Boolean, DateTime, MetaData, DateTime, ForeignKey, LargeBinary, Float
 )
 
 metadata = MetaData()
@@ -14,17 +14,18 @@ category_table = Table(
 equipment_table = Table(
     "equipment",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("id", Integer, primary_key=True),
     Column("name", String, nullable=True),
     Column("city_id", Integer, nullable=True),
     Column("landlord_id", Integer, nullable=True),
     Column("status", String, nullable=False),
-    Column("photo", String, nullable=True),
     Column("category_id", Integer, nullable=True),
-    Column("is_approved", Boolean, nullable=False, default=False),
+    Column("is_approved", Boolean, nullable=False),
     Column("description", String, nullable=True),
     Column("quantity", Integer, nullable=False, default=1),
     Column("created_at", DateTime, nullable=True),
+    Column("latitude", Float, nullable=True),
+    Column("longitude", Float, nullable=True),
 )
 
 equipment_photos_table = Table(
