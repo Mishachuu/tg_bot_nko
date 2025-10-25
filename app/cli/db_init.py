@@ -29,14 +29,12 @@ async def seed_mockup_data():
         eq_repo = EquipmentRepository(equipment_table)
         eq_service = EquipmentService(eq_repo, booking_service)
 
-        # 🔹 Сид категорий
         print("📂 Добавляем категории...")
         await cat_service.seed_categories(session, [c["name"] for c in CATEGORIES])
         print("💾 Сохраняем изменения...")
         await session.commit()
 
 
-        # 🔹 Сид оборудования
         print("📦 Добавляем оборудование...")
         for eq in MOCK_EQUIPMENT:
             try:
@@ -47,7 +45,6 @@ async def seed_mockup_data():
         print("💾 Сохраняем изменения...")
         await session.commit()
 
-        # 🔹 Сид бронирований
         print("📅 Добавляем бронирования...")
         for booking in MOCK_BOOKINGS:
             try:
@@ -64,7 +61,6 @@ async def seed_mockup_data():
         print("💾 Сохраняем изменения...")
         await session.commit()
 
-         # 🔹 Сид фото
         print("🖼 Добавляем фото оборудования...")
         photo_repo = EquipmentPhotoRepository(equipment_photos_table)
         photo_service = EquipmentPhotoService(photo_repo)

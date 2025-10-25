@@ -83,9 +83,7 @@ class EquipmentService:
         deleted = await self._repo.delete(session, equipment_id)
         await session.commit()
         return deleted
-
-    #  Примеры мини-бизнес-операций
-
+    
     async def approve(self, session: AsyncSession, equipment_id: int) -> Equipment | None:
         """Простое одобрение карточки администратором."""
         updated = await self._repo.update(session, equipment_id, {"is_approved": True})

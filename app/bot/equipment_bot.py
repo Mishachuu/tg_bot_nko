@@ -44,7 +44,6 @@ class EquipmentBot:
             "date_to": None,
         })
 
-        # Если пользователь нажал "📦 Доступное оборудование" или "🔄 Выбрать категории и даты"
         if text in ["📦 Доступное оборудование", "🔄 Выбрать категории и даты"]:
             user_data["state"] = "choosing_categories"
             user_data["selected_categories"] = set()
@@ -54,7 +53,6 @@ class EquipmentBot:
             await self.ask_categories(update, context, user_data["selected_categories"])
             return
 
-        # Обработка состояний
         if user_data["state"] == "choosing_categories":
             if text == "🔍 Найти":
                 if not user_data["selected_categories"]:

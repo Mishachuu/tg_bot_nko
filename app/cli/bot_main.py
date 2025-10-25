@@ -40,12 +40,10 @@ async def main():
     print("🤖 Бот запускается...")
     print("⏹️  Для остановки нажмите Ctrl+C")
 
-    # 🚀 Ручной запуск
     await application.initialize()
     await application.start()
     await application.updater.start_polling()
 
-    # 💡 В PTB v20 нужно ждать закрытия updater-а вручную:
     try:
         await asyncio.Event().wait()  # просто "ждём вечно" пока не Ctrl+C
     except (KeyboardInterrupt, SystemExit):

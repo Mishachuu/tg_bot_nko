@@ -10,7 +10,6 @@ class CategoryService:
             try:
                 await self._repo.create(session, name)
             except Exception:
-                # уникальные можно пропускать
                 pass
         await session.commit()
 

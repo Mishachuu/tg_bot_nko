@@ -10,7 +10,6 @@ class BookingService:
         if date_to < date_from:
             raise ValueError("Дата окончания брони не может быть раньше даты начала")
 
-        # Проверка пересечения
         existing = await self.repo.get_overlapping_bookings(session, equipment_id, date_from, date_to)
         if existing:
             raise ValueError("Выбранное оборудование уже забронировано на эти даты")
@@ -23,7 +22,7 @@ class BookingService:
         }
 
         await self.repo.create(session, booking)
-        await session.flush()  # чтобы зафиксировать ID
+        await session.flush()
         return booking
 
     async def list_bookings(self, session):
