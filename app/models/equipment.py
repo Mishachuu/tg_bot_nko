@@ -1,7 +1,7 @@
-from __future__ import annotations
-from enum import StrEnum
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
+from enum import StrEnum
 
 class RentalStatus(StrEnum):
     AVAILABLE = "available"
@@ -9,51 +9,32 @@ class RentalStatus(StrEnum):
     IN_USE = "in_use"
     RETURNED = "returned"
 
-@dataclass(slots=True)
+@dataclass
 class Equipment:
-    """
-    Класс оборудование
- 
-    attributes
-    ----------
-    id : int | None
-        ID оборудования (Primary Key)
-    name : str | None
-        Название
-    city_id: int | None
-        Связный объект город в котором находится оборудование
-    landlord_id: int | None
-        ID арендодателя (связь с таблицей пользователей)
-    status: RentalStatus
-        Статус(available, booked, in_use, returned)
-    photo: str | bytes | None
-        str - либо URL либо file_id
-        bytes - само изображение в бинарном формате
-    category_id: int | None
-        Связная таблица категория (звук, свет, мебель)
-    is_approved: bool
-        Подтверждено ли администратором (по умолчанию False)
-    description : str | None
-        Описание
-    quantity: int 
-        Кол-во
-    created_at: datetime
-        Дата создания
-    """
-    id: int | None = None
-    name: str | None = None
-    city_id: int | None = None
-    landlord_id: int | None = None
+    id: int = None
+    name: Optional[str] = None
+    city_id: Optional[int] = None
+    landlord_id: Optional[int] = None
     status: RentalStatus = RentalStatus.AVAILABLE
-    photo: str | bytes | None = None
-
-    category_id: int | None = None
+    category_id: Optional[int] = None
     is_approved: bool = False
-    description: str | None = None
+    description: Optional[str] = None
     quantity: int = 1
-    created_at: datetime | None = None
+    created_at: Optional[datetime] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
     def to_dict(self) -> dict:
-        d = asdict(self)
-        d["status"] = self.status.value
-        return d
+        return {
+            "name": self.name,
+            "city_id": self.city_id,
+            "landlord_id": self.landlord_id,
+            "status": self.status.value,
+            "category_id": self.category_id,
+            "is_approved": self.is_approved,
+            "description": self.description,
+            "quantity": self.quantity,
+            "created_at": self.created_at,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+        }
