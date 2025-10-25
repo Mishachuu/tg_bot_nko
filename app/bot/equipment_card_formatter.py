@@ -5,7 +5,6 @@ from app.models.equipment import RentalStatus, Equipment
 class EquipmentCardFormatter:
     """Форматирует карточки оборудования для Telegram"""
     
-    # Словарь статусов и эмодзи
     STATUS_EMOJIS = {
         RentalStatus.AVAILABLE: "✅ Доступен",
         RentalStatus.BOOKED: "⏳ Забронирован", 

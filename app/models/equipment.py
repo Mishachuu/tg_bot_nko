@@ -56,5 +56,4 @@ class Equipment:
     def to_dict(self) -> dict:
         d = asdict(self)
         d["status"] = self.status.value
-        # НЕ преобразуем created_at в строку, оставляем как datetime
         return d

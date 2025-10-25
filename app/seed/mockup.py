@@ -1,6 +1,14 @@
 from datetime import datetime
+from pathlib import Path
 from app.models.equipment import Equipment, RentalStatus
 
+BASE_DIR = Path(__file__).parent
+PLUG_PATH = BASE_DIR / "plug.jpg"
+
+with open(PLUG_PATH, "rb") as f:
+    PLUG_BYTES = f.read()
+
+# ---------- Города ----------
 CITIES = [
     {"id": 1, "name": "Москва"},
     {"id": 2, "name": "Санкт-Петербург"},
@@ -14,6 +22,7 @@ CITIES = [
     {"id": 10, "name": "Пермь"},
 ]
 
+# ---------- Владельцы ----------
 LANDLORDS = [
     {"id": 1, "name": "Иван Петров", "username": "ivanp"},
     {"id": 2, "name": "Анна Смирнова", "username": "annasm"},
@@ -22,16 +31,17 @@ LANDLORDS = [
     {"id": 5, "name": "Олег Кузнецов", "username": "olegk"},
 ]
 
+# ---------- Категории ----------
 CATEGORIES = [
     {"id": 1, "name": "звук"},
     {"id": 2, "name": "свет"},
     {"id": 3, "name": "мебель"},
 ]
 
-# ---------- Мокап оборудования ----------
+# ---------- Оборудование ----------
 MOCK_EQUIPMENT = [
     Equipment(
-        id = 1,
+        id=1,
         name="Микшер Yamaha MG10XU",
         city_id=CITIES[0]["id"],
         landlord_id=LANDLORDS[0]["id"],
@@ -44,7 +54,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 1, 12, 0, 0),
     ),
     Equipment(
-        id = 2,
+        id=2,
         name="Сабвуфер JBL PRX818XLF",
         city_id=CITIES[1]["id"],
         landlord_id=LANDLORDS[0]["id"],
@@ -52,12 +62,12 @@ MOCK_EQUIPMENT = [
         photo="tg://photo/2",
         category_id=CATEGORIES[0]["id"],
         is_approved=False,
-        description="18\" активный сабвуфер.",
+        description='18" активный сабвуфер.',
         quantity=2,
         created_at=datetime(2025, 1, 2, 12, 0, 0),
     ),
     Equipment(
-        id = 3,
+        id=3,
         name="Светодиодный прожектор Chauvet DJ SlimPAR 56",
         city_id=CITIES[2]["id"],
         landlord_id=LANDLORDS[1]["id"],
@@ -70,7 +80,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 3, 12, 0, 0),
     ),
     Equipment(
-        id = 4,
+        id=4,
         name="Стойка для микрофона K&M 210/9",
         city_id=CITIES[3]["id"],
         landlord_id=LANDLORDS[1]["id"],
@@ -83,7 +93,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 4, 12, 0, 0),
     ),
     Equipment(
-        id = 5,
+        id=5,
         name="LED панель Godox LEDP120C",
         city_id=CITIES[4]["id"],
         landlord_id=LANDLORDS[1]["id"],
@@ -96,7 +106,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 5, 12, 0, 0),
     ),
     Equipment(
-        id = 6,
+        id=6,
         name="Стул складной Икеа",
         city_id=CITIES[5]["id"],
         landlord_id=LANDLORDS[2]["id"],
@@ -109,7 +119,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 6, 12, 0, 0),
     ),
     Equipment(
-        id = 7,
+        id=7,
         name="DMX Controller 192",
         city_id=CITIES[6]["id"],
         landlord_id=LANDLORDS[2]["id"],
@@ -122,7 +132,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 7, 12, 0, 0),
     ),
     Equipment(
-        id = 8,
+        id=8,
         name="RCF ART 712-A (активная колонка)",
         city_id=CITIES[7]["id"],
         landlord_id=LANDLORDS[3]["id"],
@@ -130,12 +140,12 @@ MOCK_EQUIPMENT = [
         photo="tg://photo/8",
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
-        description="700W, 12\" драйвер, ровный звук.",
+        description='700W, 12" драйвер, ровный звук.',
         quantity=2,
         created_at=datetime(2025, 1, 8, 12, 0, 0),
     ),
     Equipment(
-        id = 9,
+        id=9,
         name="Диван двухместный",
         city_id=CITIES[8]["id"],
         landlord_id=LANDLORDS[4]["id"],
@@ -148,7 +158,7 @@ MOCK_EQUIPMENT = [
         created_at=datetime(2025, 1, 9, 12, 0, 0),
     ),
     Equipment(
-        id = 10,
+        id=10,
         name="Световая стойка с диммером",
         city_id=CITIES[9]["id"],
         landlord_id=LANDLORDS[4]["id"],
@@ -160,4 +170,38 @@ MOCK_EQUIPMENT = [
         quantity=2,
         created_at=datetime(2025, 1, 10, 12, 0, 0),
     ),
+]
+
+# ---------- Фото оборудования ----------
+# для всех, у кого нет фото, ставим plug.png
+MOCK_EQUIPMENT_PHOTOS = [
+    {"id": 1 ,"equipment_id": 1, "filename": "plug.png", "content": PLUG_BYTES},
+    {"id": 2 ,"equipment_id": 2, "filename": "plug.png", "content": PLUG_BYTES},
+    {"id": 3 ,"equipment_id": 2, "filename": "plug.png", "content": PLUG_BYTES},
+]
+
+
+# ---------- Бронирования ----------
+MOCK_BOOKINGS = [
+    {
+        "id": 1,
+        "equipment_id": 2,  # Сабвуфер JBL
+        "user_id": 3,       # Дмитрий
+        "date_from": datetime(2025, 2, 10),
+        "date_to": datetime(2025, 2, 12),
+    },
+    {
+        "id": 2,
+        "equipment_id": 8,  # Колонки RCF ART
+        "user_id": 4,       # Мария
+        "date_from": datetime(2025, 3, 5),
+        "date_to": datetime(2025, 3, 8),
+    },
+    {
+        "id": 3,
+        "equipment_id": 5,  # LED панель
+        "user_id": 2,       # Анна
+        "date_from": datetime(2025, 1, 20),
+        "date_to": datetime(2025, 1, 22),
+    },
 ]

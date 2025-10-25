@@ -45,7 +45,8 @@ class EquipmentRepository:
     -----------------------------------------------------------------
     """
 
-    def __init__(self):
+    def __init__(self, table):
+        self._t = table
         self._mock_data = []
 
     # ------------------- MAPPERS -------------------
@@ -156,16 +157,3 @@ class EquipmentRepository:
         res = await session.execute(stmt)
         # rowcount у async + Core может быть None у некоторых драйверов, но чаще OK
         return (res.rowcount or 0) > 0
-    
-    #===== For mockup ====== 
-    async def get_all(self) -> list[Equipment]:
-        return self._mock_data
-
-    async def get_by_id(self, equipment_id: int = None) -> Equipment | None:
-        for eq in self._mock_data:
-            if eq.id == equipment_id:
-                return eq
-        return None
-    
-    def set_mock_data(self, data: list[Equipment]):
-        self._mock_data = data
