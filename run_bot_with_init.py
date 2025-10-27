@@ -16,6 +16,7 @@ async def main():
     """Запускает инициализацию БД, затем бота"""
     load_dotenv()
     MOCKUP_REQUIRED = os.getenv('MOCKUP_REQUIRED')
+    
     print("🚀 Запуск инициализации базы данных...")
     await db_init_main(MOCKUP_REQUIRED)
     print("🎯 Запуск телеграм бота...")

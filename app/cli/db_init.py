@@ -1,5 +1,4 @@
 import asyncio
-from app.db.init_db import init_db
 from app.db.tables import category_table, equipment_table, bookings_table, equipment_photos_table
 from app.repositories.booking_repository import BookingRepository
 from app.services.booking_service import BookingService
@@ -12,11 +11,19 @@ from app.services.equipment_photo_service import EquipmentPhotoService
 from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES, MOCK_BOOKINGS, MOCK_EQUIPMENT_PHOTOS
 from app.db.session import AsyncSessionLocal
 
+import asyncio
+from app.db.session import engine
+from app.db.tables import metadata
+
+
+
 async def init_database():
     """Создаёт таблицы в БД."""
     print("🧱 Инициализация базы данных...")
-    await init_db()
-    print("✅ Таблицы созданы.")
+    async with engine.begin() as conn:
+        # Создание всех таблиц, если их ещё нет
+        await conn.run_sync(metadata.create_all)
+    print("✅ Таблицы (metadata) созданы.")
 
 
 async def seed_mockup_data():
