@@ -173,11 +173,11 @@ class EquipmentRepository:
                 
                 if distance <= radius_km:
                     filtered_equipment.append(eq)
-                    print(f"   ✅ ДОБАВЛЕНО в результат")
+                    print(f"✅ ДОБАВЛЕНО в результат")
                 else:
-                    print(f"   ❌ ЗА ПРЕДЕЛАМИ радиуса")
+                    print(f"❌ ЗА ПРЕДЕЛАМИ радиуса")
             else:
-                print(f"   ⚠️ НЕТ КООРДИНАТ")
+                print(f"⚠️ НЕТ КООРДИНАТ")
         
         print(f"🎯 ИТОГО отфильтровано по локации: {len(filtered_equipment)}")
         

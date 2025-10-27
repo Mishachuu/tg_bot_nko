@@ -11,10 +11,14 @@ class RentalStatus(StrEnum):
 
 @dataclass
 class Equipment:
+    """
+    Atribute:
+        user_id (int): пользователь который разместил оборудование
+    """
     id: int = None
     name: Optional[str] = None
     city_id: Optional[int] = None
-    landlord_id: Optional[int] = None
+    user_id: Optional[int] = None
     status: RentalStatus = RentalStatus.AVAILABLE
     category_id: Optional[int] = None
     is_approved: bool = False
@@ -28,7 +32,7 @@ class Equipment:
         return {
             "name": self.name,
             "city_id": self.city_id,
-            "landlord_id": self.landlord_id,
+            "user_id": self.user_id,
             "status": self.status.value,
             "category_id": self.category_id,
             "is_approved": self.is_approved,
