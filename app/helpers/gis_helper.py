@@ -22,9 +22,9 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     
     distance = R * c
     
-    print(f"      📐 РАСЧЕТ РАССТОЯНИЯ:")
-    print(f"         Точка 1: ({lat1}, {lon1})")
-    print(f"         Точка 2: ({lat2}, {lon2})")
-    print(f"         Результат: {distance:.6f} км")
+    print(f"\t📐 РАСЧЕТ РАССТОЯНИЯ:")
+    print(f"\tТочка 1: ({lat1}, {lon1})")
+    print(f"\tТочка 2: ({lat2}, {lon2})")
+    print(f"\tРезультат: {distance:.6f} км")
     
     return distance

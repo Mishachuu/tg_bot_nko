@@ -167,17 +167,17 @@ class EquipmentRepository:
             
             if has_coords:
                 distance = calculate_distance(latitude, longitude, eq.latitude, eq.longitude)
-                print(f"   📏 Расстояние: {distance:.1f} км")
-                print(f"   📏 Радиус поиска: {radius_km} км")
-                print(f"   📏 Условие: distance <= radius_km = {distance <= radius_km}")
+                print(f"\t📏 Расстояние: {distance:.1f} км")
+                print(f"\t📏 Радиус поиска: {radius_km} км")
+                print(f"\t📏 Условие: distance <= radius_km = {distance <= radius_km}")
                 
                 if distance <= radius_km:
                     filtered_equipment.append(eq)
-                    print(f"✅ ДОБАВЛЕНО в результат")
+                    print(f"\t✅ ДОБАВЛЕНО в результат")
                 else:
-                    print(f"❌ ЗА ПРЕДЕЛАМИ радиуса")
+                    print(f"\t❌ ЗА ПРЕДЕЛАМИ радиуса")
             else:
-                print(f"⚠️ НЕТ КООРДИНАТ")
+                print(f"\t⚠️ НЕТ КООРДИНАТ")
         
         print(f"🎯 ИТОГО отфильтровано по локации: {len(filtered_equipment)}")
         
