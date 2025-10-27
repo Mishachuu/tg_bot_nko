@@ -57,7 +57,7 @@ bookings_table = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("equipment_id", Integer, ForeignKey("equipment.id"), nullable=False),
-    Column("user_id", Integer, ForeignKey("user.id"), nullable=False), # id пользователя который забронировал 
+    Column("user_id", Integer, ForeignKey("users.id"), nullable=False), # id пользователя который забронировал 
     Column("date_from", DateTime, nullable=False),
     Column("date_to", DateTime, nullable=False),
 )
