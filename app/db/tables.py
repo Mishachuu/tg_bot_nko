@@ -14,7 +14,7 @@ user_table = Table(
     Column("phone_number", String, nullable=True, unique=True),
     Column("email", String, nullable=True, unique=True),
     Column("allow_pub", Boolean, nullable=True),
-    Column("city", String, nullable=True),
+    Column("city_id", Integer, nullable=True),
     Column("score", Float, default=0),
 )
 
@@ -33,7 +33,6 @@ equipment_table = Table(
     Column("name", String, nullable=True),
     Column("city_id", Integer, nullable=True),
     Column("user_id", Integer, ForeignKey("users.id") , nullable=True),
-    Column("status", String, nullable=False),
     Column("category_id", Integer, nullable=True),
     Column("is_approved", Boolean, nullable=False),
     Column("description", String, nullable=True),

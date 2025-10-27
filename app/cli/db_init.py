@@ -31,8 +31,10 @@ async def seed_mockup_data():
 
         booking_repo = BookingRepository(bookings_table)
         booking_service = BookingService(booking_repo)
+
         cat_repo = CategoryRepository(category_table)
         cat_service = CategoryService(cat_repo)
+        
         eq_repo = EquipmentRepository(equipment_table)
         eq_service = EquipmentService(eq_repo, booking_service)
 
@@ -85,7 +87,7 @@ async def seed_mockup_data():
 
         print("✅ Мокап загружен (категории, оборудование, бронирования).")
 
-
+# Зачем нам функция которая выводит в консоль ?
 async def list_equipment():
     """Выводит содержимое таблицы оборудования."""
     from app.db.tables import equipment_table

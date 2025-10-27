@@ -14,4 +14,7 @@ class CategoryService:
         await session.commit()
 
     async def list_categories(self, session: AsyncSession):
+        """
+        Возвращает все категории из БД
+        """
         return await self._repo.get_all(session)

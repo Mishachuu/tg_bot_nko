@@ -3,11 +3,7 @@ from datetime import datetime
 from typing import Optional
 from enum import StrEnum
 
-class RentalStatus(StrEnum):
-    AVAILABLE = "available"
-    BOOKED = "booked"
-    IN_USE = "in_use"
-    RETURNED = "returned"
+
 
 @dataclass
 class Equipment:
@@ -19,7 +15,6 @@ class Equipment:
     name: Optional[str] = None
     city_id: Optional[int] = None
     user_id: Optional[int] = None
-    status: RentalStatus = RentalStatus.AVAILABLE
     category_id: Optional[int] = None
     is_approved: bool = False
     description: Optional[str] = None

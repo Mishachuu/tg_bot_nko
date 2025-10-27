@@ -1,41 +1,75 @@
 from datetime import datetime
 from pathlib import Path
 from app.models.equipment import Equipment, RentalStatus
-
-BASE_DIR = Path(__file__).parent
-PLUG_PATH = BASE_DIR / "plug.jpg"
-
-with open(PLUG_PATH, "rb") as f:
-    PLUG_BYTES = f.read()
+from app.models.user_app import AppUser
 
 # ---------- Города ----------
 CITIES = [
     {"id": 1, "name": "Москва"},
-    {"id": 2, "name": "Санкт-Петербург"},
-    {"id": 3, "name": "Екатеринбург"},
-    {"id": 4, "name": "Казань"},
-    {"id": 5, "name": "Новосибирск"},
-    {"id": 6, "name": "Нижний Новгород"},
-    {"id": 7, "name": "Ростов-на-Дону"},
-    {"id": 8, "name": "Самара"},
-    {"id": 9, "name": "Воронеж"},
-    {"id": 10, "name": "Пермь"},
+    {"id": 2, "name": "Самара"},
 ]
-
+USERS = [
+    {"id": 1, "name": "Иван Иванов", "city":"Самара"},
+    {"id": 2, "name": "Пётр Петров", "city":"Москва"},
+    {"id": 3, "name": "Дмитрий Соколов", "city":"Москва"},
+    {"id": 4, "name": "Мария Иванова", "city":"Самара"},
+    {"id": 5, "name": "Олег Кузнецов","city": "Москва"}
+]
 # ---------- Владельцы ----------
 USERS = [
-    {"id": 1, "name": "Иван Петров", "username": "ivanp"},
-    {"id": 2, "name": "Анна Смирнова", "username": "annasm"},
-    {"id": 3, "name": "Дмитрий Соколов", "username": "dimas"},
-    {"id": 4, "name": "Мария Иванова", "username": "masha"},
-    {"id": 5, "name": "Олег Кузнецов", "username": "olegk"},
-]
+    AppUser(
+        id=1,
+        name="Петр",
+        tg_id=1,
+        phone_number="+79383716517",
+        email= "petr@gmail.com",
+        allow_pub = True,
+        city_id = 2,
+        score = 5),
+    AppUser(
+        id=2,
+        name="Василий",
+        tg_id=2,
+        phone_number="+79383316517",
+        email= "vasily@gmail.com",
+        allow_pub = True,
+        city_id = 1,
+        score = 4.9),
+
+    AppUser(
+        id=3,
+        name="Иван",
+        tg_id=3,
+        phone_number="+79383316517",
+        email= "Ivan@gmail.com",
+        allow_pub = False,
+        city_id = 2,
+        score = 4.9),
+    AppUser(
+        id=4,
+        name="Игнат",
+        tg_id=4,
+        phone_number="+79383316517",
+        email= "Ignat@gmail.com",
+        allow_pub = False,
+        city_id = 1,
+        score = 4.9),
+    AppUser(
+        id=5,
+        name="Матвей",
+        tg_id=789235294,
+        phone_number="+79093316515",
+        email= "matvey@gmail.com",
+        allow_pub = True,
+        city_id = 2,
+        score = 1)
+    ]
 
 # ---------- Категории ----------
 CATEGORIES = [
     {"id": 1, "name": "звук"},
     {"id": 2, "name": "свет"},
-    {"id": 3, "name": "мебель"},
+    {"id": 3, "name": "мебель"}
 ]
 
 # ---------- Оборудование ----------
@@ -43,10 +77,10 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=1,
         name="Микшер Yamaha MG10XU",
-        city_id=CITIES[0]["id"],
-        user_id=USERS[0]["id"],
+        city_id=2,
+        user_id=1,
         status=RentalStatus.AVAILABLE,
-        category_id=CATEGORIES[0]["id"],
+        category_id=1,
         is_approved=True,
         description="10-канальный аналоговый микшер с эффектами.",
         quantity=1,
@@ -183,8 +217,8 @@ MOCK_EQUIPMENT = [
 ]
 
 # ---------- Фото оборудования ----------
+# для всех, у кого нет фото, ставим plug.png
 MOCK_EQUIPMENT_PHOTOS = [
-    {"id": 1 ,"equipment_id": 1, "filename": "plug.png", "content": PLUG_BYTES}
 ]
 
 

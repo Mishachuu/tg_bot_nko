@@ -2,8 +2,21 @@ from dataclasses import dataclass
 from models.user import User
 from models.equipment import Equipment
 from typing import List
+from enum import StrEnum
 
 from sqlalchemy.orm import Mapped, mapped_column
+
+class Publishing(StrEnum):
+    """
+    BLOCKED - Заблокированно
+    REQUESTED - Запрос отправлен
+    REJECTED - Отклонено
+    APPROVED - Принято
+    """
+    BLOCKED = "blocked"
+    REQUESTED = "requested"
+    REJECTED = "rejected"
+    APPROVED = "approved"
 
 @dataclass
 class AppUser(User):
@@ -19,9 +32,9 @@ class AppUser(User):
     
     phone_number: Mapped[str]
     email: Mapped[str]
-    allow_pub: Mapped[bool] = mapped_column(default=False)
+    publish: Mapped[Publishing] = mapped_column(StrEnum(Publishing),default="blocked")
 
-    city: Mapped[str]
+    city_id: Mapped[int]
     score: Mapped[float] = mapped_column(default=0)
 
     rented_items: List[Equipment]
