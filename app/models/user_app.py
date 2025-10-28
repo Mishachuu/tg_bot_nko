@@ -1,12 +1,13 @@
 from dataclasses import dataclass
-from models.user import User
-from models.equipment import Equipment
+from app.models.user import User
+from app.models.equipment import Equipment
 from typing import List
-from enum import StrEnum
+from enum import StrEnum,Enum
 
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
-class Publishing(StrEnum):
+class Publishing(str, Enum):
     """
     BLOCKED - Заблокированно
     REQUESTED - Запрос отправлен
@@ -22,22 +23,24 @@ class Publishing(StrEnum):
 class AppUser(User):
     """
     Attributes:
-        phone_numbers (list): Список контактных телефонов арендодателя.
-        emails (list): Список контактных email арендодателя.
+        phone_number (str): телефон арендодателя.
+        email (str): email арендодателя.
         city (str): Город пользователя 
         score (float): Рейтинг арендодателя.
         rented_items (List[Equipment]): Список забронированного оборудования пользователем 
         equipment_list (List[Equipment]): Список оборудования, который выложил данный пользователь
     """
+
+    #rented_items: List[Equipment]
+    #equipment_list: List[Equipment]
     
-    phone_number: Mapped[str]
-    email: Mapped[str]
-    publish: Mapped[Publishing] = mapped_column(StrEnum(Publishing),default="blocked")
+    email: Mapped[str] = mapped_column(nullable=True)
+    publish: Mapped[Publishing] = mapped_column(
+        SQLEnum("blocked", "requested", "rejected", "approved", name="publishing_enum"),
+        default="blocked")
+    phone_number: Mapped[str] = mapped_column(nullable=True)
 
-    city_id: Mapped[int]
+    city_id: Mapped[int] = mapped_column(nullable=True)
     score: Mapped[float] = mapped_column(default=0)
-
-    rented_items: List[Equipment]
-    equipment_list: List[Equipment]
 
 

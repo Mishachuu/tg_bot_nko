@@ -90,12 +90,12 @@ class EquipmentService:
         await session.commit()
         return updated
 
-    async def set_status(self, session: AsyncSession, equipment_id: int, status: RentalStatus) -> Equipment | None:
+    async def set_status(self, session: AsyncSession, equipment_id: int) -> Equipment | None:
         """
         Безопасная смена статуса (минимальная проверка).
         Здесь можно расширить логику (например, запрещать переходы).
         """
-        updated = await self._repo.update(session, equipment_id, {"status": status.value})
+        updated = await self._repo.update(session, equipment_id)
         await session.commit()
         return updated
     

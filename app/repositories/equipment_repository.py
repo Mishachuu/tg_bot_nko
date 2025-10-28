@@ -12,7 +12,7 @@ from dataclasses import asdict
 from math import radians, cos, sin, asin, sqrt
 from sqlalchemy import func
 from app.helpers.gis_helper import calculate_distance
-
+from app.db.tables import equipment_table
 from app.models.equipment import Equipment
 
 
@@ -48,7 +48,7 @@ class EquipmentRepository:
     -----------------------------------------------------------------
     """
 
-    def __init__(self, table):
+    def __init__(self, table=equipment_table):
         self._t = table
         self._mock_data = []
 

@@ -3,10 +3,13 @@ import asyncio
 from telegram.ext import Application
 
 from app.repositories.booking_repository import BookingRepository
-from app.services.booking_service import BookingService
 from app.repositories.equipment_repository import EquipmentRepository
+from app.repositories.user_repository import UserRepository
+
+from app.services.booking_service import BookingService
 from app.services.equipment_service import EquipmentService
-from app.bot.NKO_bot import NKOBot
+from app.services.user_service import UserService
+from app.bot.NKO_bot_2 import NKOBot
 from app.db.tables import equipment_table
 from app.db.tables import bookings_table
 #from app.setting import TOKEN
@@ -24,9 +27,13 @@ async def main():
 
     booking_repo = BookingRepository(bookings_table)
     booking_service = BookingService(booking_repo)
-    repo = EquipmentRepository(equipment_table)
-    equipment_service = EquipmentService(repo, booking_service)
-    bot = NKOBot(equipment_service)
+
+    repo_equipment = EquipmentRepository()
+    equipment_service = EquipmentService(repo_equipment, booking_service)
+
+    repo_user =  UserRepository()
+    user_service = UserService(repo_user)
+    bot = NKOBot(equipment_service, user_service)
 
     load_dotenv("app/.env")
     token = os.getenv('TOKEN')

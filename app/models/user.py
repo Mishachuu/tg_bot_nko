@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from models.equipment import Equipment
+from app.models.equipment import Equipment
 from typing import List
 #Для sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column

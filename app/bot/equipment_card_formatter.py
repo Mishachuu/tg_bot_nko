@@ -5,8 +5,6 @@ from app.models.equipment import  Equipment
 class EquipmentCardFormatter:
     """Форматирует карточки оборудования для Telegram"""
     
-    
-    
     @classmethod
     def create_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно") -> str:
         """Создает форматированную карточку оборудования"""
