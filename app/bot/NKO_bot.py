@@ -14,7 +14,7 @@ from telegram import InputFile
 from app.bot.bot_state import BotState
 from app.helpers.gis_helper import calculate_distance
 
-class EquipmentBot:
+class NKOBot:
     def __init__(self, equipment_service: EquipmentService):
         self.equipment_service = equipment_service
         self.formatter = EquipmentCardFormatter()

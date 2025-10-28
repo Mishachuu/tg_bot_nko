@@ -13,7 +13,7 @@ from math import radians, cos, sin, asin, sqrt
 from sqlalchemy import func
 from app.helpers.gis_helper import calculate_distance
 
-from app.models.equipment import Equipment, RentalStatus
+from app.models.equipment import Equipment
 
 
 class EquipmentRepository:
@@ -72,7 +72,6 @@ class EquipmentRepository:
             name=d.get("name"),
             city_id=d.get("city_id"),
             landlord_id=d.get("landlord_id"),
-            status=RentalStatus(d.get("status")) if d.get("status") else RentalStatus.AVAILABLE,
             category_id=d.get("category_id"),
             is_approved=bool(d.get("is_approved")),
             description=d.get("description"),

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.equipment import Equipment, RentalStatus
+from app.models.equipment import Equipment
 from app.repositories.equipment_repository import EquipmentRepository
 from app.services.booking_service import BookingService
 
@@ -151,10 +151,6 @@ class EquipmentService:
         available = []
 
         for eq in eq_list:
-            if eq.status != RentalStatus.AVAILABLE:
-                print(eq.status)
-                print(f"   ❌ Пропущено: статус не AVAILABLE")
-                continue
             if self._booking_service:
                 is_free = await self._booking_service.is_equipment_available(session, eq.id, date_from, date_to)
                 if not is_free:

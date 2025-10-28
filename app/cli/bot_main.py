@@ -6,7 +6,7 @@ from app.repositories.booking_repository import BookingRepository
 from app.services.booking_service import BookingService
 from app.repositories.equipment_repository import EquipmentRepository
 from app.services.equipment_service import EquipmentService
-from app.bot.equipment_bot import EquipmentBot
+from app.bot.NKO_bot import NKOBot
 from app.db.tables import equipment_table
 from app.db.tables import bookings_table
 #from app.setting import TOKEN
@@ -26,7 +26,7 @@ async def main():
     booking_service = BookingService(booking_repo)
     repo = EquipmentRepository(equipment_table)
     equipment_service = EquipmentService(repo, booking_service)
-    bot = EquipmentBot(equipment_service)
+    bot = NKOBot(equipment_service)
 
     load_dotenv("app/.env")
     token = os.getenv('TOKEN')
