@@ -146,8 +146,8 @@ class NKOBot:
     # ------------------------ UI: главное меню и прочее ------------------------
     async def _show_main_menu(self, update: Update, message: str):
         menu_buttons = [
-            ["📋 Каталог оборудования", "🔍 Поиск"],
-            ["⭐ Избранное", "🛠️ Мои заявки"],
+            ["🛠️ Моё оборудование", "🔍 Поиск"],
+            ["➕ Добавить оборудование", "📋 Моя бронь"],
             ["ℹ️ Помощь", "👤 Профиль"],
         ]
         reply_markup = ReplyKeyboardMarkup(menu_buttons, resize_keyboard=True)
