@@ -10,7 +10,6 @@ from app.services.booking_service import BookingService
 from app.services.equipment_service import EquipmentService
 from app.services.user_service import UserService
 from app.bot.NKO_bot_2 import NKOBot
-from app.db.tables import equipment_table
 from app.db.tables import bookings_table
 #from app.setting import TOKEN
 import os
