@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
-from enum import StrEnum
 from sqlalchemy.orm import Mapped, mapped_column
-
+from app.db.base import Base
 
 @dataclass
-class Equipment:
+class Equipment(Base):
+    __tablename__ = "equipments"
     """
     Atribute:
         user_id (int): пользователь который разместил оборудование

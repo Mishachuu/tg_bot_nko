@@ -4,27 +4,23 @@ from sqlalchemy.sql import Select, Update, Delete, Insert
 from sqlalchemy import insert, select, update as sql_update, delete as sql_delete
 from sqlalchemy.engine import Result
 
-from app.db.tables import user_table
+
 from app.models.user_app import AppUser
 
 class UserRepository:
-    def __init__(self, table=user_table):
-        self.table = table
+    def __init__(self):
+        self.model = AppUser
 
     # ====== CRUD =====
-    async def get_by_tgId(self, session: AsyncSession, tg_id: int) -> AppUser | None:
-        stmt = select(AppUser).where(AppUser.tg_id == tg_id)
-        res = await session.execute(stmt)
-        user = res.scalars().one_or_none()   # <- scalars() возвращает ORM-объекты
-        return user
 
-    async def get_by_id(self, session: AsyncSession, id : int ):
-        stmt : Select = select(AppUser).where(self.table.c.id == id)
-        res : Result = await session.execute(stmt)
-        user = res.scalar_one_or_none()
-        if user is None:
-            return None
-        return user
+    def __init__(self):
+        self.model = AppUser
+
+    async def get_by_tgId(self, session: AsyncSession, tg_id: int) -> AppUser | None:
+        stmt = select(self.model).where(self.model.tg_id == tg_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()  # Возвращает один объект или None
+
     
     async def post(self, session: AsyncSession, user: AppUser):
         session.add(user)
