@@ -30,8 +30,9 @@ async def main():
     repo_equipment = EquipmentRepository()
     equipment_service = EquipmentService(repo_equipment, booking_service)
 
-    repo_user =  UserRepository()
+    repo_user = UserRepository()
     user_service = UserService(repo_user)
+
     bot = NKOBot(equipment_service, user_service)
 
     load_dotenv("app/.env")

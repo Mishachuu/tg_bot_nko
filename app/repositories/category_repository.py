@@ -5,7 +5,7 @@ class CategoryRepository:
     def __init__(self, table):
         self._t = table
 
-    async def create(self, session: AsyncSession, name: str):
+    async def post(self, session: AsyncSession, name: str):
         stmt = insert(self._t).values(name=name).returning(self._t)
         res = await session.execute(stmt)
         return res.fetchone()

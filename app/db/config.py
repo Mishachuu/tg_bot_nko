@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+# Конфиг подключения к БД данные берем из app/.env
 class Settings(BaseSettings):
     DB_HOST: str 
     DB_PORT: int
