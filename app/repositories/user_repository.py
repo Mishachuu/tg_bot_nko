@@ -21,6 +21,10 @@ class UserRepository:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()  # Возвращает один объект или None
 
+    async def get_by_id(self, session: AsyncSession, user_id: int) -> AppUser | None:
+        stmt = select(self.model).where(self.model.id == user_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()  # Возвращает один объект или None
     
     async def post(self, session: AsyncSession, user: AppUser):
         session.add(user)
@@ -28,7 +32,13 @@ class UserRepository:
         await session.refresh(user)
         return user
     
-    async def update_by_id(self, session: AsyncSession, user_id: int, changes: dict) -> AppUser | None:
+    async def get_all(self, session: AsyncSession):
+        """Return:  List[AppUser]"""
+        stmt = select(self.model)
+        result = await session.execute(stmt)
+        return result.scalars().all() 
+    
+    async def update(self, session: AsyncSession, user_id: int, changes: dict) -> AppUser | None:
         # 1) Получаем объект
         res = await session.execute(select(AppUser).where(self.table.c.id == user_id))
         user = res.scalars().one_or_none()
@@ -58,5 +68,3 @@ class UserRepository:
         except Exception:
             await session.rollback()
             raise
-
-
