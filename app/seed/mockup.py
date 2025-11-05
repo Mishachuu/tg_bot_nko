@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 from app.models.equipment import Equipment
+from app.models.user_app import AppUser
+
 
 BASE_DIR = Path(__file__).parent
 PLUG_PATH = BASE_DIR / "plug.jpg"
@@ -8,34 +10,64 @@ PLUG_PATH = BASE_DIR / "plug.jpg"
 with open(PLUG_PATH, "rb") as f:
     PLUG_BYTES = f.read()
 
-# ---------- Города ----------
-CITIES = [
-    {"id": 1, "name": "Москва"},
-    {"id": 2, "name": "Санкт-Петербург"},
-    {"id": 3, "name": "Екатеринбург"},
-    {"id": 4, "name": "Казань"},
-    {"id": 5, "name": "Новосибирск"},
-    {"id": 6, "name": "Нижний Новгород"},
-    {"id": 7, "name": "Ростов-на-Дону"},
-    {"id": 8, "name": "Самара"},
-    {"id": 9, "name": "Воронеж"},
-    {"id": 10, "name": "Пермь"},
-]
 
 # ---------- Владельцы ----------
 USERS = [
-    {"id": 1, "name": "Иван Петров", "username": "ivanp"},
-    {"id": 2, "name": "Анна Смирнова", "username": "annasm"},
-    {"id": 3, "name": "Дмитрий Соколов", "username": "dimas"},
-    {"id": 4, "name": "Мария Иванова", "username": "masha"},
-    {"id": 5, "name": "Олег Кузнецов", "username": "olegk"},
-]
+    AppUser(
+        id=1,
+        name="Петр",
+        tg_id=1,
+        phone_number="+79383716517",
+        email= "petr@gmail.com",
+        allow_pub = True,
+        city_id = 2,
+        score = 5),
+    AppUser(
+        id=2,
+        name="Василий",
+        tg_id=1,
+        phone_number="+79383316517",
+        email= "vasily@gmail.com",
+        allow_pub = True,
+        city_id = 1,
+        score = 4.9),
+
+    AppUser(
+        id=3,
+        name="Иван",
+        tg_id=3,
+        phone_number="+79383316517",
+        email= "Ivan@gmail.com",
+        allow_pub = False,
+        city_id = 1,
+        score = 4.9),
+    AppUser(
+        id=4,
+        name="Игнат",
+        tg_id=4,
+        phone_number="+79383316517",
+        email= "Ignat@gmail.com",
+        allow_pub = False,
+        city_id = 2,
+        score = 4.9),
+    AppUser(
+        id=5,
+        name="Матвей",
+        tg_id=789235294,
+        phone_number="+79093316515",
+        email= "matvey@gmail.com",
+        allow_pub = True,
+        city_id = 1,
+        score = 1)
+    ]
+
 
 # ---------- Категории ----------
 CATEGORIES = [
-    {"id": 1, "name": "звук"},
-    {"id": 2, "name": "свет"},
-    {"id": 3, "name": "мебель"},
+    {"id": 1, "name": "звук", "is_accepted": True},
+    {"id": 2, "name": "свет", "is_accepted": True},
+    {"id": 3, "name": "мебель", "is_accepted": True},
+    {"id": 3, "name": "техника", "is_accepted": False}
 ]
 
 # ---------- Оборудование ----------
@@ -43,7 +75,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=1,
         name="Микшер Yamaha MG10XU",
-        city_id=CITIES[0]["id"],
+        city_id=1,
         user_id=USERS[0]["id"],
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
@@ -56,7 +88,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=2,
         name="Сабвуфер JBL PRX818XLF",
-        city_id=CITIES[1]["id"],
+        city_id=1,
         user_id=USERS[0]["id"],
         category_id=CATEGORIES[0]["id"],
         is_approved=False,
@@ -69,7 +101,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=3,
         name="Светодиодный прожектор Chauvet DJ SlimPAR 56",
-        city_id=CITIES[2]["id"],
+        city_id=2,
         user_id=USERS[1]["id"],
         category_id=CATEGORIES[1]["id"],
         is_approved=True,
@@ -82,7 +114,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=4,
         name="Стойка для микрофона K&M 210/9",
-        city_id=CITIES[3]["id"],
+        city_id=1,
         user_id=USERS[1]["id"],
         category_id=CATEGORIES[2]["id"],
         is_approved=True,
@@ -95,7 +127,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=5,
         name="LED панель Godox LEDP120C",
-        city_id=CITIES[4]["id"],
+        city_id=2,
         user_id=USERS[1]["id"],
         category_id=CATEGORIES[1]["id"],
         is_approved=False,
@@ -108,7 +140,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=6,
         name="Стул складной Икеа",
-        city_id=CITIES[5]["id"],
+        city_id=1,
         user_id=USERS[2]["id"],
         category_id=CATEGORIES[2]["id"],
         is_approved=True,
@@ -121,7 +153,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=7,
         name="DMX Controller 192",
-        city_id=CITIES[6]["id"],
+        city_id=2,
         user_id=USERS[2]["id"],
 
         category_id=CATEGORIES[1]["id"],
@@ -135,7 +167,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=8,
         name="RCF ART 712-A (активная колонка)",
-        city_id=CITIES[7]["id"],
+        city_id=1,
         user_id=USERS[3]["id"],
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
@@ -148,7 +180,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=9,
         name="Диван двухместный",
-        city_id=CITIES[8]["id"],
+        city_id=2,
         user_id=USERS[4]["id"],
         category_id=CATEGORIES[2]["id"],
         is_approved=False,
@@ -161,7 +193,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=10,
         name="Световая стойка с диммером",
-        city_id=CITIES[9]["id"],
+        city_id=1,
         user_id=USERS[4]["id"],
         category_id=CATEGORIES[1]["id"],
         is_approved=True,
@@ -203,3 +235,8 @@ MOCK_BOOKINGS = [
         "date_to": datetime(2025, 1, 22),
     },
 ]
+
+MOCK_CITY = [
+    {"id": 1, "name": "Самара"},
+    {"id": 2, "name": "Москва"}
+    ]

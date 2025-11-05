@@ -26,7 +26,8 @@ class UserRepository:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()  # Возвращает один объект или None
     
-    async def add_user(self, session: AsyncSession, user: AppUser):
+    async def add_user(self, session: AsyncSession, user: AppUser, publish = False):
+        user.publish = publish
         session.add(user)
         await session.commit()
         await session.refresh(user)

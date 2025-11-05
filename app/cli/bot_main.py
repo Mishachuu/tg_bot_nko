@@ -11,7 +11,7 @@ from app.services.booking_service import BookingService
 from app.services.equipment_service import EquipmentService
 from app.services.user_service import UserService
 from app.services.city_service import CityService
-
+from app.services.category_service import CategoryService
 
 from app.bot.nkobot import NKOBot
 from app.bot.equipment_bot import EquipmentBot
@@ -27,21 +27,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def main():
+async def main(booking_repo, repo_equipment, repo_user, repo_city, repo_category):
     """Основная функция запуска бота (работает внутри asyncio.run)"""
 
-    booking_repo = BookingRepository(bookings_table)
     booking_service = BookingService(booking_repo)
-
-    repo_equipment = EquipmentRepository()
     equipment_service = EquipmentService(repo_equipment, booking_service)
-
-    repo_user = UserRepository()
     user_service = UserService(repo_user)
-
-    #repo_city = CityRepository()
-    city_service = CityService()
-
+    city_service = CityService(repo_city)
+    category_service = CategoryService(repo_category)
+    
     bot = NKOBot(equipment_service, user_service, city_service)
     bot_equipment = EquipmentBot(equipment_service)
     load_dotenv("app/.env")

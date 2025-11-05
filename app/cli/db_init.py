@@ -13,6 +13,7 @@ from app.db.session import AsyncSessionLocal
 import asyncio
 from app.db.session import engine
 from app.db.base import Base
+from app.services.set_mockup_service import SetMockupService
 
 
 
@@ -25,14 +26,14 @@ async def init_database():
     print("✅ Таблицы (metadata) созданы.")
 
 
-async def seed_mockup_data():
-    pass
+async def seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_city, repo_category):
+    SetMockupService(repo_equipment, booking_repo, repo_category, repo_user, repo_city).create_all_tables()
 
 
-async def db_init_main(seed: bool = True):
+async def db_init_main(booking_repo, repo_equipment, repo_user, repo_city, repo_category,seed: bool = False):#
     """Главная точка входа для инициализации БД и (опционально) загрузки мокапа."""
     await asyncio.sleep(3)  # подождать, пока контейнер Postgres поднимется
-    await init_database()
+    await init_database(booking_repo, repo_equipment, repo_user, repo_city, repo_category)
 
     if seed:
         await seed_mockup_data()
