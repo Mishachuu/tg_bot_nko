@@ -6,6 +6,9 @@ class UserService:
     def __init__(self, repo_user: UserRepository):
         self.repo_user = repo_user
 
+    async def get_user_profile(self, session:AsyncSession, tg_id):
+        user = await self.repo_user.get_by_tgId(session, tg_id)
+        return user
     async def check_user(self, session: AsyncSession, tg_id: int):
         """Проверяем существует ли пользователь в БД или мы должны его зарегестровать
             Return: 

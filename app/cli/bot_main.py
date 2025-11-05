@@ -6,10 +6,16 @@ from app.repositories.booking_repository import BookingRepository
 from app.repositories.equipment_repository import EquipmentRepository
 from app.repositories.user_repository import UserRepository
 
+
 from app.services.booking_service import BookingService
 from app.services.equipment_service import EquipmentService
 from app.services.user_service import UserService
-from app.bot.NKO_bot_2 import NKOBot
+from app.services.city_service import CityService
+
+
+from app.bot.nkobot import NKOBot
+from app.bot.equipment_bot import EquipmentBot
+
 from app.db.tables import bookings_table
 #from app.setting import TOKEN
 import os
@@ -33,8 +39,11 @@ async def main():
     repo_user = UserRepository()
     user_service = UserService(repo_user)
 
-    bot = NKOBot(equipment_service, user_service)
+    #repo_city = CityRepository()
+    city_service = CityService()
 
+    bot = NKOBot(equipment_service, user_service, city_service)
+    bot_equipment = EquipmentBot(equipment_service)
     load_dotenv("app/.env")
     token = os.getenv('TOKEN')
     if not token:
@@ -45,6 +54,8 @@ async def main():
 
     # Регистрируем обработчики
     for handler in bot.get_handlers():
+        application.add_handler(handler)
+    for handler in bot_equipment.get_handlers():
         application.add_handler(handler)
 
     print("🤖 Бот запускается...")

@@ -7,14 +7,14 @@ from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.db.session import AsyncSessionLocal
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
-from app.db.tables import category_table, equipment_photos_table
+#from app.db.tables import category_table, equipment_photos_table
 from datetime import datetime
 import io
 from telegram import InputFile
 from app.bot.bot_state import BotState
 from app.helpers.gis_helper import calculate_distance
 
-class NKOBot:
+class EquipmentBot:
     def __init__(self, equipment_service: EquipmentService):
         self.equipment_service = equipment_service
         self.formatter = EquipmentCardFormatter()
@@ -22,11 +22,11 @@ class NKOBot:
 
         self._user_state = {}
 
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        main_keyboard = [["📦 Доступное оборудование"]]
+    async def search(self, update: Update, context: ContextTypes.DEFAULT_TYPE = None):
+        main_keyboard = [["📦 Отфильтровать оборудование"], ["Показать всё оборудование"], ["Назад"]]
         reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
         await update.message.reply_text(
-            "👋 Добро пожаловать!\nВыберите действие:",
+            "Выберите поиск:",
             reply_markup=reply_markup
         )
 
@@ -292,10 +292,11 @@ class NKOBot:
         else:
             # Если локация получена не в том состоянии, игнорируем
             await update.message.reply_text("📍 Сначала выберите 'Доступное оборудование' для отправки локации.")
+    
+    
 
     def get_handlers(self):
         return [
-            CommandHandler("start", self.start),
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message),
             CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)"),
             MessageHandler(filters.LOCATION, self.handle_location),

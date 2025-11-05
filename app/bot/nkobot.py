@@ -2,7 +2,11 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardR
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from app.services.user_service import UserService  # можно удалить но
 from app.db.session import AsyncSessionLocal
+from app.bot.equipment_bot import EquipmentBot
+from app.bot.bot_state import BotState
+from app.services.city_service import CityService
 
+from app.models.user_app import AppUser
 
 class NKOBot:
     """
@@ -21,10 +25,14 @@ class NKOBot:
     BTN_SEND_CONTACT = "📱 Отправить мой телефон"
     BTN_SKIP = "Пропустить"
 
-    def __init__(self, equipment_service, user_service: UserService):
+    def __init__(self, equipment_service, user_service: UserService, city_service:CityService):
+        # Сепрвисы:
         self.equipment_service = equipment_service
         self.user_service = user_service
+        self.city_service = city_service
+
         self.user_states: dict[int, dict] = {}  # временные состояния пользователей
+        self.equipment_bot = EquipmentBot(equipment_service)
 
     # ------------------------ Команды ------------------------
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -144,12 +152,21 @@ class NKOBot:
         await self._show_main_menu(update, "✅ Регистрация завершена! Теперь вы можете пользоваться ботом.")
 
     # ------------------------ UI: главное меню и прочее ------------------------
-    async def _show_main_menu(self, update: Update, message: str):
-        menu_buttons = [
-            ["🛠️ Моё оборудование", "🔍 Поиск"],
-            ["➕ Добавить оборудование", "📋 Моя бронь"],
-            ["ℹ️ Помощь", "👤 Профиль"],
-        ]
+    async def _show_main_menu(self, update: Update, message: str): 
+        async with AsyncSessionLocal() as session:
+            user = await self.user_service.get_user_profile(session, update.effective_user.id)
+        if(user.publish):
+            menu_buttons = [
+                ["🛠️ Моё оборудование", "🔍 Поиск"],
+                ["➕ Добавить оборудование", "📋 Моя бронь"],
+                ["ℹ️ Помощь", "👤 Профиль"],
+            ]
+        elif(user.publish == False):
+            menu_buttons = [
+                ["🔍 Поиск", "📋 Моя бронь"],
+                ["Отправить запрос на публикацию оборудования"],
+                ["ℹ️ Помощь", "👤 Профиль"],
+            ]
         reply_markup = ReplyKeyboardMarkup(menu_buttons, resize_keyboard=True)
 
         # Используем ReplyKeyboardRemove перед отправкой, чтобы убрать временные клавиатуры, если они остались
@@ -163,23 +180,44 @@ class NKOBot:
             await self._show_user_profile(update)
         elif message_text == "ℹ️ Помощь":
             await self._show_help(update)
-        else:
-            await update.message.reply_text("Не понял вашу команду. Используйте кнопки меню.")
+        elif message_text == "🔍 Поиск":
+            await self.handle_search(update)
+        elif message_text == "📦 Отфильтровать оборудование":
+            self.equipment_bot.user_data["state"] = BotState.ASKING_LOCATION
+            await self.equipment_bot.ask_location(update)
+        elif message_text == "➕ Добавить оборудование":
+            # проверяем права на публикацию
+            async with AsyncSessionLocal() as session:
+                user = await self.user_service.get_user_profile(session, update.effective_user.id)
+            if(user.publish == False):
+
+                pass
+            # else: проводим добавелние в бота 
+        #else:
+        #    await update.message.reply_text("Не понял вашу команду. Используйте кнопки меню.")
 
     async def _show_equipment_catalog(self, update: Update):
         await update.message.reply_text("📋 Раздел каталога оборудования в разработке...")
 
     async def _show_user_profile(self, update: Update):
-        user_id = update.effective_user.id
+        tg_id = update.effective_user.id
         async with AsyncSessionLocal() as session:
-            user_profile = await self.user_service.get_user_profile(session, user_id)
+            user: AppUser = await self.user_service.get_user_profile(session, tg_id)
+        city_name = await self.city_service.get_name_city_by_id(session,tg_id)
+        if(user.publish):
+            publish_text = "Разрешено"
+        elif(not user.publish):
+            publish_text = "Запрещено"
+        else:
+            publish_text = "Обратитесь к @admin за разрешением"
 
         profile_text = (
             f"👤 Ваш профиль:\n"
-            f"Имя: {user_profile['name']}\n"
-            f"Город: {user_profile['city']}\n"
-            f"Телефон: {user_profile['phone']}\n"
-            f"Email: {user_profile['email'] or 'не указан'}"
+            f"Разрешение на публикацию: {publish_text}\n"
+            f"Имя: {user.name}\n"
+            f"Город: {city_name}\n"
+            f"Телефон: {user.phone_number or 'не указан'}\n"
+            f"Email: {user.email or 'не указан'}"
         )
         await update.message.reply_text(profile_text)
 
@@ -195,6 +233,9 @@ class NKOBot:
         )
         await update.message.reply_text(help_text)
 
+    async def handle_search(self, update: Update):
+        """Обработчик кнопки поиска"""
+        await self.equipment_bot.search(update)
     # ------------------------ Обработчики для диспетчера ------------------------
     def get_handlers(self):
         return [
@@ -202,6 +243,7 @@ class NKOBot:
             CommandHandler("help", self._show_help),
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handler),
             MessageHandler(filters.CONTACT, self._handle_contact_shared),
+            MessageHandler(filters.Regex("^🔍 Поиск$"), self.handle_search)
         ]
 
     # ------------------------ Контакт (кнопка отправки контакта) ------------------------
