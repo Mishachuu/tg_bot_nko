@@ -46,7 +46,7 @@ class EquipmentService:
         Создать оборудование с бизнес-правилами.
         """
         equipment = self._apply_defaults_on_create(equipment)
-        created = await self._repo.create(session, equipment)
+        created = await self._repo.add_equipment(session, equipment)
         await session.commit()  # фиксируем транзакцию сразу после создания
         return created
 

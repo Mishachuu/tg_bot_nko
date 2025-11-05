@@ -33,4 +33,4 @@ class UserService:
                     city_id=city_id,
                     email=email,
                     phone_number=phone_number)
-        return await self.repo_user.post(session, user)
+        return await self.repo_user.add_user(session, user)

@@ -21,7 +21,7 @@ class BookingService:
             "date_to": date_to,
         }
 
-        await self.repo.create(session, booking)
+        await self.repo.add_booking(session, booking)
         await session.flush()
         return booking
 

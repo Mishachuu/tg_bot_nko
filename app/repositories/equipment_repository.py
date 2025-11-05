@@ -23,7 +23,7 @@ class EquipmentRepository:
         self.model = Equipment
     # ------------------- CRUD -------------------
 
-    async def post(self, session: AsyncSession, equipment: Equipment) -> Equipment:
+    async def add_equipment(self, session: AsyncSession, equipment: Equipment) -> Equipment:
         """
         Создает запись и возвращает созданную сущность с новым ID.
         """
