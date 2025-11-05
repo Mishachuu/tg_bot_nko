@@ -8,7 +8,7 @@ class CategoryService:
     async def seed_categories(self, session: AsyncSession, categories: list[str]):
         for name in categories:
             try:
-                await self._repo.add_category(session, name)
+                await self._repo.a(session, name)
             except Exception:
                 pass
         await session.commit()

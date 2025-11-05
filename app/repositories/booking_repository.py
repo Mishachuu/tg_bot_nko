@@ -6,7 +6,7 @@ class BookingRepository:
     def __init__(self, table=bookings_table):
         self.table = table
 
-    async def create(self, session, booking_data: dict):
+    async def add_booking(self, session, booking_data: dict):
         """Создаёт новую бронь"""
         query = self.table.insert().values(**booking_data).returning(self.table)
         result = await session.execute(query)
