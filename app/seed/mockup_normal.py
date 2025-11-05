@@ -8,17 +8,10 @@ CITIES = [
     {"id": 1, "name": "Москва"},
     {"id": 2, "name": "Самара"},
 ]
-USERS = [
-    {"id": 1, "name": "Иван Иванов", "city":"Самара"},
-    {"id": 2, "name": "Пётр Петров", "city":"Москва"},
-    {"id": 3, "name": "Дмитрий Соколов", "city":"Москва"},
-    {"id": 4, "name": "Мария Иванова", "city":"Самара"},
-    {"id": 5, "name": "Олег Кузнецов","city": "Москва"}
-]
+
 # ---------- Владельцы ----------
 USERS = [
     AppUser(
-        id=1,
         name="Петр",
         tg_id=1,
         phone_number="+79383716517",
@@ -27,7 +20,6 @@ USERS = [
         city_id = 2,
         score = 5),
     AppUser(
-        id=2,
         name="Василий",
         tg_id=2,
         phone_number="+79383316517",
@@ -37,7 +29,6 @@ USERS = [
         score = 4.9),
 
     AppUser(
-        id=3,
         name="Иван",
         tg_id=3,
         phone_number="+79383316517",
@@ -46,7 +37,6 @@ USERS = [
         city_id = 2,
         score = 4.9),
     AppUser(
-        id=4,
         name="Игнат",
         tg_id=4,
         phone_number="+79383316517",
@@ -55,7 +45,6 @@ USERS = [
         city_id = 1,
         score = 4.9),
     AppUser(
-        id=5,
         name="Матвей",
         tg_id=789235294,
         phone_number="+79093316515",
@@ -75,7 +64,6 @@ CATEGORIES = [
 # ---------- Оборудование ----------
 MOCK_EQUIPMENT = [
     Equipment(
-        id=1,
         name="Микшер Yamaha MG10XU",
         city_id=2,
         user_id=1,
@@ -89,7 +77,6 @@ MOCK_EQUIPMENT = [
         longitude=37.6173
     ),
     Equipment(
-        id=2,
         name="Сабвуфер JBL PRX818XLF",
         city_id=CITIES[1]["id"],
         user_id=USERS[0]["id"],
@@ -103,7 +90,6 @@ MOCK_EQUIPMENT = [
         longitude=50.100
     ),
     Equipment(
-        id=3,
         name="Светодиодный прожектор Chauvet DJ SlimPAR 56",
         city_id=CITIES[2]["id"],
         user_id=USERS[1]["id"],
@@ -117,7 +103,6 @@ MOCK_EQUIPMENT = [
         longitude=37.6173
     ),
     Equipment(
-        id=4,
         name="Стойка для микрофона K&M 210/9",
         city_id=CITIES[3]["id"],
         user_id=USERS[1]["id"],
@@ -131,7 +116,6 @@ MOCK_EQUIPMENT = [
         longitude=50.100
     ),
     Equipment(
-        id=5,
         name="LED панель Godox LEDP120C",
         city_id=CITIES[4]["id"],
         user_id=USERS[1]["id"],
@@ -145,7 +129,6 @@ MOCK_EQUIPMENT = [
         longitude=37.6173
     ),
     Equipment(
-        id=6,
         name="Стул складной Икеа",
         city_id=CITIES[5]["id"],
         user_id=USERS[2]["id"],
@@ -159,7 +142,6 @@ MOCK_EQUIPMENT = [
         longitude=50.100
     ),
     Equipment(
-        id=7,
         name="DMX Controller 192",
         city_id=CITIES[6]["id"],
         user_id=USERS[2]["id"],
@@ -173,7 +155,6 @@ MOCK_EQUIPMENT = [
         longitude=37.6173
     ),
     Equipment(
-        id=8,
         name="RCF ART 712-A (активная колонка)",
         city_id=CITIES[7]["id"],
         user_id=USERS[3]["id"],
@@ -187,7 +168,6 @@ MOCK_EQUIPMENT = [
         longitude=50.100
     ),
     Equipment(
-        id=9,
         name="Диван двухместный",
         city_id=CITIES[8]["id"],
         user_id=USERS[4]["id"],
@@ -201,7 +181,6 @@ MOCK_EQUIPMENT = [
         longitude=37.6173
     ),
     Equipment(
-        id=10,
         name="Световая стойка с диммером",
         city_id=CITIES[9]["id"],
         user_id=USERS[4]["id"],
