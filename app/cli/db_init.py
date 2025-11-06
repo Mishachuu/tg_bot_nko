@@ -1,113 +1,53 @@
 import asyncio
-from app.db.init_db import init_db
-from app.db.tables import category_table, equipment_table, bookings_table, equipment_photos_table
-from app.repositories.booking_repository import BookingRepository
-from app.services.booking_service import BookingService
-from app.repositories.category_repository import CategoryRepository
-from app.services.category_service import CategoryService
-from app.repositories.equipment_repository import EquipmentRepository
-from app.services.equipment_service import EquipmentService
-from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
-from app.services.equipment_photo_service import EquipmentPhotoService
-from app.seed.mockup import MOCK_EQUIPMENT, CATEGORIES, MOCK_BOOKINGS, MOCK_EQUIPMENT_PHOTOS
-from app.db.session import AsyncSessionLocal
+from sqlalchemy import text
+from app.db.session import engine, AsyncSessionLocal
+from app.db.base import Base
+from app.services.set_mockup_service import SetMockupService
+
+# Надёжно ждём готовности Postgres
+async def wait_for_db(max_attempts: int = 30, delay_sec: float = 1.0):
+    attempt = 1
+    while True:
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            print("✅ Соединение с БД установлено.")
+            return
+        except Exception as e:
+            if attempt >= max_attempts:
+                print(f"❌ БД так и не поднялась: {e}")
+                raise
+            print(f"⏳ БД ещё не готова (попытка {attempt}/{max_attempts}): {e}")
+            await asyncio.sleep(delay_sec)
+            attempt += 1
 
 async def init_database():
     """Создаёт таблицы в БД."""
     print("🧱 Инициализация базы данных...")
-    await init_db()
-    print("✅ Таблицы созданы.")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("✅ Таблицы (metadata) созданы.")
 
-
-async def seed_mockup_data():
+async def seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_city, repo_category):
+    service = SetMockupService(repo_equipment, booking_repo, repo_category, repo_user, repo_city)
     async with AsyncSessionLocal() as session:
+        await service.create_users(session)
+        await service.create_categories(session)
+        await service.create_city(session)
+        await service.create_equipments(session)
+        await service.create_booking(session)
+        # await service.create_photos(session)
 
-        booking_repo = BookingRepository(bookings_table)
-        booking_service = BookingService(booking_repo)
-        cat_repo = CategoryRepository(category_table)
-        cat_service = CategoryService(cat_repo)
-        eq_repo = EquipmentRepository(equipment_table)
-        eq_service = EquipmentService(eq_repo, booking_service)
-
-        print("📂 Добавляем категории...")
-        await cat_service.seed_categories(session, [c["name"] for c in CATEGORIES])
-        print("💾 Сохраняем изменения...")
-        await session.commit()
-
-
-        print("📦 Добавляем оборудование...")
-        for eq in MOCK_EQUIPMENT:
-            try:
-                await eq_service.create_equipment(session, eq)
-            except Exception as e:
-                print("⚠️ Ошибка при добавлении оборудования:", e)
-
-        print("💾 Сохраняем изменения...")
-        await session.commit()
-
-        print("📅 Добавляем бронирования...")
-        for booking in MOCK_BOOKINGS:
-            try:
-                await booking_service.create_booking(
-                    session,
-                    equipment_id=booking["equipment_id"],
-                    user_id=booking["user_id"],
-                    date_from=booking["date_from"],
-                    date_to=booking["date_to"],
-                )
-            except Exception as e:
-                print(f"⚠️ Ошибка при добавлении бронирования {booking['id']}: {e}")
-
-        print("💾 Сохраняем изменения...")
-        await session.commit()
-
-        print("🖼 Добавляем фото оборудования...")
-        photo_repo = EquipmentPhotoRepository(equipment_photos_table)
-        photo_service = EquipmentPhotoService(photo_repo)
-
-        for photo in MOCK_EQUIPMENT_PHOTOS:
-            try:
-                await photo_service.add_photo(
-                    session,
-                    equipment_id=photo["equipment_id"],
-                    filename=photo["filename"],
-                    content=photo["content"],
-                )
-            except Exception as e:
-                print(f"⚠️ Ошибка при добавлении фото: {e}")
-
-        print("✅ Мокап загружен (категории, оборудование, бронирования).")
-
-
-async def list_equipment():
-    """Выводит содержимое таблицы оборудования."""
-    from app.db.tables import equipment_table
-
-    async with AsyncSessionLocal() as session:
-        booking_repo = BookingRepository(bookings_table)
-        booking_service = BookingService(booking_repo)
-        repo = EquipmentRepository(equipment_table)
-        service = EquipmentService(repo, booking_service)
-
-        equipment_list = await service.list_equipment(session)
-        if not equipment_list:
-            print("ℹ️ База пуста.")
-        else:
-            print("📋 Список оборудования:")
-            for eq in equipment_list:
-                print(f"[{eq.id}] {eq.name} — {eq.status.value} — {eq.quantity} шт.")
-
-
-async def db_init_main(seed: bool = True):
-    """Главная точка входа для инициализации БД и (опционально) загрузки мокапа."""
-    await asyncio.sleep(3)  # подождать, пока контейнер Postgres поднимется
+async def db_init_main(booking_repo, repo_equipment, repo_user, repo_city, repo_category, seed: bool = False):
+    print("🚀 Запуск инициализации базы данных...")
+    # 1) ждём готовности Postgres
+    await wait_for_db()
+    # 2) создаём таблицы
     await init_database()
-
-    if seed:
-        await seed_mockup_data()
-
-    await list_equipment()
-
+    # 3) при необходимости — сидим мок-данные
+    if seed in (True, "True", "true", "1"):  # т.к. из .env приходит строка
+        await seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_city, repo_category)
 
 if __name__ == "__main__":
-    asyncio.run(db_init_main())
+    # для ручного запуска можно добавить заглушки/моки репоз
+    pass

@@ -1,7 +1,25 @@
 import logging
 import asyncio
 from telegram.ext import Application
-from app.setting import TOKEN
+
+from app.repositories.booking_repository import BookingRepository
+from app.repositories.equipment_repository import EquipmentRepository
+from app.repositories.user_repository import UserRepository
+
+
+from app.services.booking_service import BookingService
+from app.services.equipment_service import EquipmentService
+from app.services.user_service import UserService
+from app.services.city_service import CityService
+from app.services.category_service import CategoryService
+
+from app.bot.nkobot import NKOBot
+from app.bot.equipment_bot import EquipmentBot
+
+from app.db.tables import bookings_table
+#from app.setting import TOKEN
+import os
+from dotenv import load_dotenv
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -9,24 +27,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def main():
+async def main(booking_repo, repo_equipment, repo_user, repo_city, repo_category):
     """Основная функция запуска бота (работает внутри asyncio.run)"""
 
-    from app.repositories.booking_repository import BookingRepository
-    from app.services.booking_service import BookingService
-    from app.repositories.equipment_repository import EquipmentRepository
-    from app.services.equipment_service import EquipmentService
-    from app.bot.equipment_bot import EquipmentBot
-    from app.db.tables import equipment_table
-    from app.db.tables import bookings_table
-
-    booking_repo = BookingRepository(bookings_table)
     booking_service = BookingService(booking_repo)
-    repo = EquipmentRepository(equipment_table)
-    equipment_service = EquipmentService(repo, booking_service)
-    bot = EquipmentBot(equipment_service)
-
-    token = TOKEN
+    equipment_service = EquipmentService(repo_equipment, booking_service)
+    user_service = UserService(repo_user)
+    city_service = CityService(repo_city)
+    category_service = CategoryService(repo_category)
+    
+    bot = NKOBot(equipment_service, user_service, city_service)
+    bot_equipment = EquipmentBot(equipment_service)
+    load_dotenv("app/.env")
+    token = os.getenv('TOKEN')
     if not token:
         logger.error("❌ Не найден TOKEN бота.")
         return
@@ -35,6 +48,8 @@ async def main():
 
     # Регистрируем обработчики
     for handler in bot.get_handlers():
+        application.add_handler(handler)
+    for handler in bot_equipment.get_handlers():
         application.add_handler(handler)
 
     print("🤖 Бот запускается...")

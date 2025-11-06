@@ -21,7 +21,7 @@ class BookingService:
             "date_to": date_to,
         }
 
-        await self.repo.create(session, booking)
+        await self.repo.add_booking(session, booking)
         await session.flush()
         return booking
 
@@ -29,7 +29,7 @@ class BookingService:
         return await self.repo.list(session)
 
     async def get_bookings_for_equipment(self, session, equipment_id: int):
-        return await self.repo.get_by_equipment(session, equipment_id)
+        return await self.repo.get_by_equipment_id(session, equipment_id)
 
     async def is_equipment_available(self, session, equipment_id: int, date_from: datetime, date_to: datetime) -> bool:
         """Проверяет, свободно ли оборудование на выбранные даты"""

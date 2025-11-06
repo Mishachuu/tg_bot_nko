@@ -8,10 +8,13 @@ class CategoryService:
     async def seed_categories(self, session: AsyncSession, categories: list[str]):
         for name in categories:
             try:
-                await self._repo.create(session, name)
+                await self._repo.a(session, name)
             except Exception:
                 pass
         await session.commit()
 
     async def list_categories(self, session: AsyncSession):
+        """
+        Возвращает все категории из БД
+        """
         return await self._repo.get_all(session)

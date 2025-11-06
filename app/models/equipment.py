@@ -1,59 +1,41 @@
-from __future__ import annotations
-from enum import StrEnum
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column
+from app.db.base import Base
 
-class RentalStatus(StrEnum):
-    AVAILABLE = "available"
-    BOOKED = "booked"
-    IN_USE = "in_use"
-    RETURNED = "returned"
-
-@dataclass(slots=True)
-class Equipment:
+@dataclass
+class Equipment(Base):
+    __tablename__ = "equipments"
     """
-    Класс оборудование
- 
-    attributes
-    ----------
-    id : int | None
-        ID оборудования (Primary Key)
-    name : str | None
-        Название
-    city_id: int | None
-        Связный объект город в котором находится оборудование
-    landlord_id: int | None
-        ID арендодателя (связь с таблицей пользователей)
-    status: RentalStatus
-        Статус(available, booked, in_use, returned)
-    photo: str | bytes | None
-        str - либо URL либо file_id
-        bytes - само изображение в бинарном формате
-    category_id: int | None
-        Связная таблица категория (звук, свет, мебель)
-    is_approved: bool
-        Подтверждено ли администратором (по умолчанию False)
-    description : str | None
-        Описание
-    quantity: int 
-        Кол-во
-    created_at: datetime
-        Дата создания
+    Atribute:
+        user_id (int): пользователь который разместил оборудование
+        is_approved (bool): Поле которые так же проставляет модерация/адин (!! В дальнейшем передеалть под Enum !!)
+        is_publish (bool): Если пользлватеоль удаляет объявление оно просто скрыватся но не удаляется удаилть объявление может только модератор/админ
     """
-    id: int | None = None
-    name: str | None = None
-    city_id: int | None = None
-    landlord_id: int | None = None
-    status: RentalStatus = RentalStatus.AVAILABLE
-    photo: str | bytes | None = None
-
-    category_id: int | None = None
-    is_approved: bool = False
-    description: str | None = None
-    quantity: int = 1
-    created_at: datetime | None = None
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(nullable=True)
+    city_id: Mapped[int] = mapped_column(nullable=True)
+    user_id: Mapped[int] = mapped_column(nullable=False)
+    category_id: Mapped[int] = mapped_column(nullable=True)
+    is_approved: Mapped[bool] = mapped_column(default=False)
+    is_publish: Mapped[bool] = mapped_column(default=False)
+    description: Mapped[str] = mapped_column(nullable=True)
+    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    latitude: Mapped[float] = mapped_column(nullable=True)
+    longitude: Mapped[float] = mapped_column(nullable=True)
 
     def to_dict(self) -> dict:
-        d = asdict(self)
-        d["status"] = self.status.value
-        return d
+        return {
+            "name": self.name,
+            "city_id": self.city_id,
+            "user_id": self.user_id,
+            "status": self.status.value,
+            "category_id": self.category_id,
+            "is_approved": self.is_approved,
+            "description": self.description,
+            "quantity": self.quantity,
+            "created_at": self.created_at,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+        }

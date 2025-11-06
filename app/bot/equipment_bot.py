@@ -7,15 +7,12 @@ from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.db.session import AsyncSessionLocal
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
-from app.db.tables import category_table, equipment_table, equipment_photos_table
+#from app.db.tables import category_table, equipment_photos_table
 from datetime import datetime
-from app.services.booking_service import BookingService
-from app.repositories.booking_repository import BookingRepository
-from app.db.tables import bookings_table
-from datetime import timedelta
 import io
 from telegram import InputFile
-
+from app.bot.bot_state import BotState
+from app.helpers.gis_helper import calculate_distance
 
 class EquipmentBot:
     def __init__(self, equipment_service: EquipmentService):
@@ -25,81 +22,123 @@ class EquipmentBot:
 
         self._user_state = {}
 
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        main_keyboard = [["📦 Доступное оборудование"]]
+    async def search(self, update: Update, context: ContextTypes.DEFAULT_TYPE = None):
+        main_keyboard = [["📦 Отфильтровать оборудование"], ["Показать всё оборудование"], ["Назад"]]
         reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
         await update.message.reply_text(
-            "👋 Добро пожаловать!\nВыберите действие:",
+            "Выберите поиск:",
             reply_markup=reply_markup
         )
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        text = update.message.text.strip()
         user_id = update.effective_user.id
-
-        user_data = self._user_state.get(user_id, {
-            "state": None,
+        message = update.message
+        text = message.text.strip() if message.text else ""
+        user_data = self._user_state.setdefault(user_id, {
+            "state": BotState.MAIN_MENU,
             "selected_categories": set(),
             "date_from": None,
             "date_to": None,
+            "location": None,
+            "radius_km": 30
         })
 
-        if text in ["📦 Доступное оборудование", "🔄 Выбрать категории и даты"]:
-            user_data["state"] = "choosing_categories"
-            user_data["selected_categories"] = set()
-            user_data["date_from"] = None
-            user_data["date_to"] = None
-            self._user_state[user_id] = user_data
+        state = user_data["state"]
+
+        # --- Главное меню ---
+        if state == BotState.MAIN_MENU:
+            if text == "📦 Доступное оборудование":
+                user_data["state"] = BotState.ASKING_LOCATION
+                await self.ask_location(update)
+            else:
+                await update.message.reply_text("Выберите действие из меню.")
+            return
+
+        # --- Получение радиуса ---
+        elif state == BotState.ASKING_RADIUS:
+            try:
+                if text:
+                    radius = int(text)
+                    if radius <= 0:
+                        raise ValueError
+                    user_data["radius_km"] = radius
+                else:
+                    user_data["radius_km"] = 30
+            except ValueError:
+                await update.message.reply_text("⚠️ Введите число километров, например 15.")
+                return
+
+            user_data["state"] = BotState.CHOOSING_CATEGORIES
             await self.ask_categories(update, context, user_data["selected_categories"])
             return
 
-        if user_data["state"] == "choosing_categories":
+        # --- Выбор категорий ---
+        elif state == BotState.CHOOSING_CATEGORIES:
             if text == "🔍 Найти":
                 if not user_data["selected_categories"]:
                     await update.message.reply_text("❗ Выберите хотя бы одну категорию.")
                     return
-                user_data["state"] = "entering_date_from"
-                self._user_state[user_id] = user_data
-                await update.message.reply_text("Введите дату начала аренды в формате ГГГГ.ММ.ДД (например, 2025.10.18):")
+                user_data["state"] = BotState.ENTERING_DATE_FROM
+                await update.message.reply_text("Введите дату начала аренды (ГГГГ.ММ.ДД):")
             else:
                 await self.toggle_category_selection(update, context, text, user_data)
             return
 
-        if user_data["state"] == "entering_date_from":
+        # --- Ввод даты начала ---
+        elif state == BotState.ENTERING_DATE_FROM:
             try:
                 user_data["date_from"] = datetime.strptime(text, "%Y.%m.%d")
-                user_data["state"] = "entering_date_to"
-                self._user_state[user_id] = user_data
-                await update.message.reply_text("Введите дату окончания аренды в формате ГГГГ.ММ.ДД:")
+                user_data["state"] = BotState.ENTERING_DATE_TO
+                await update.message.reply_text("Введите дату окончания аренды (ГГГГ.ММ.ДД):")
             except ValueError:
                 await update.message.reply_text("⚠️ Неверный формат. Введите дату как ГГГГ.ММ.ДД.")
             return
 
-        if user_data["state"] == "entering_date_to":
+        # --- Ввод даты окончания ---
+        elif state == BotState.ENTERING_DATE_TO:
             try:
                 user_data["date_to"] = datetime.strptime(text, "%Y.%m.%d")
                 if user_data["date_to"] < user_data["date_from"]:
                     await update.message.reply_text("⚠️ Дата окончания не может быть раньше даты начала.")
                     return
-
                 await self.show_equipment_by_categories_and_date(update, context, user_data)
-                self._user_state.pop(user_id, None)  # Сброс состояния
-
+                user_data["state"] = BotState.MAIN_MENU
             except ValueError:
-                await update.message.reply_text("⚠️ Неверный формат даты. Введите в формате ГГГГ.ММ.ДД.")
+                await update.message.reply_text("⚠️ Неверный формат даты. Введите дату снова.")
             return
 
-        await update.message.reply_text("🤔 Не понимаю команду. Используйте кнопки меню.")
+        # --- Неизвестное состояние ---
+        else:
+            await update.message.reply_text("⚙️ Непонятное состояние, возвращаюсь в главное меню.")
+            user_data["state"] = BotState.MAIN_MENU
+            await self.start(update, context)
+
+    async def ask_location(self, update: Update):
+        keyboard = [[KeyboardButton("📍 Отправить локацию", request_location=True)]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        await update.message.reply_text(
+            "📍 Пожалуйста, отправьте вашу локацию, чтобы показать доступное оборудование рядом с вами:",
+            reply_markup=reply_markup
+        )
 
     async def show_equipment_by_categories_and_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
         async with AsyncSessionLocal() as session:
             available_equipment = []
+            
+            # Проверяем, есть ли локация у пользователя
+            user_location = user_data.get("location")
+            radius_km = user_data.get("radius_km", 30)
+            
             for cat_id in user_data["selected_categories"]:
-                eqs = await self.equipment_service.find_available_by_category_and_date(
+                # Используем метод с учетом локации
+                eqs = await self.equipment_service.find_available_by_category_date_and_location(
                     session,
                     cat_id,
                     user_data["date_from"],
-                    user_data["date_to"]
+                    user_data["date_to"],
+                    user_location["lat"],
+                    user_location["lon"],
+                    radius_km
                 )
                 available_equipment.extend(eqs)
 
@@ -107,18 +146,35 @@ class EquipmentBot:
             photo_service = EquipmentPhotoService(photo_repo)
 
             if not available_equipment:
+                location_info = ""
+                if user_location:
+                    location_info = f" в радиусе {radius_km} км от вашей локации"
+                
                 keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
                 await update.message.reply_text(
-                    "😔 Нет свободного оборудования на выбранные даты.",
+                    f"😔 Нет свободного оборудования на выбранные даты{location_info}.",
                     reply_markup=keyboard
                 )
                 return
 
-            await update.message.reply_text(f"📦 Доступное оборудование ({len(available_equipment)} позиций):")
+            location_info = ""
+            if user_location:
+                location_info = f" в радиусе {radius_km} км от вас"
+                
+            await update.message.reply_text(f"📦 Доступное оборудование{location_info} ({len(available_equipment)} позиций):")
 
             for eq in available_equipment:
                 photos = await photo_service.list_photos(session, eq.id)
                 card_text = self.formatter.create_equipment_card(eq, self.users.get(eq.landlord_id, "Неизвестно"))
+                
+                # Добавьте информацию о расстоянии, если есть локация
+                if user_location and hasattr(eq, 'latitude') and hasattr(eq, 'longitude'):
+                    distance = calculate_distance(
+                        user_location["lat"], user_location["lon"],
+                        eq.latitude, eq.longitude
+                    )
+                    card_text += f"\n📍 Расстояние: {distance:.1f} км"
+                
                 keyboard = self.formatter.create_interaction_keyboard(eq.id)
 
                 if photos:
@@ -140,7 +196,7 @@ class EquipmentBot:
 
             restart_keyboard = ReplyKeyboardMarkup([["🔄 Выбрать категории и даты"]], resize_keyboard=True)
             await update.message.reply_text("Выберите действие", reply_markup=restart_keyboard)
-
+    
     async def ask_categories(self, update: Update, context: ContextTypes.DEFAULT_TYPE, selected_categories: set):
         async with AsyncSessionLocal() as session:
             cat_repo = CategoryRepository(category_table)
@@ -206,11 +262,44 @@ class EquipmentBot:
                 f"💬 Вопрос по оборудованию ID: {equipment_id}\nФункция вопросов в разработке..."
             )
 
+    async def handle_location(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обрабатывает получение локации от пользователя"""
+        user_id = update.effective_user.id
+        user_data = self._user_state.setdefault(user_id, {
+            "state": BotState.MAIN_MENU,
+            "selected_categories": set(),
+            "date_from": None,
+            "date_to": None,
+            "location": None,
+            "radius_km": 30
+        })
+        
+        state = user_data["state"]
+        
+        # Обрабатываем локацию только если мы ее ожидаем
+        if state == BotState.ASKING_LOCATION:
+            location = update.message.location
+            user_data["location"] = {
+                "lat": location.latitude,
+                "lon": location.longitude
+            }
+            print(f"Получена локация: {user_data['location']}")
+            
+            user_data["state"] = BotState.ASKING_RADIUS
+            await update.message.reply_text(
+                "📏 Укажите радиус поиска в километрах (по умолчанию 30 км):"
+            )
+        else:
+            # Если локация получена не в том состоянии, игнорируем
+            await update.message.reply_text("📍 Сначала выберите 'Доступное оборудование' для отправки локации.")
+    
+    
+
     def get_handlers(self):
         return [
-            CommandHandler("start", self.start),
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message),
             CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)"),
+            MessageHandler(filters.LOCATION, self.handle_location),
         ]
 
 

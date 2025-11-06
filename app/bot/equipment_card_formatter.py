@@ -1,21 +1,9 @@
 from typing import Dict
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.models.equipment import RentalStatus, Equipment
+from app.models.equipment import  Equipment
 
 class EquipmentCardFormatter:
     """Форматирует карточки оборудования для Telegram"""
-    
-    STATUS_EMOJIS = {
-        RentalStatus.AVAILABLE: "✅ Доступен",
-        RentalStatus.BOOKED: "⏳ Забронирован", 
-        RentalStatus.IN_USE: "🔴 В аренде",
-        RentalStatus.RETURNED: "🔄 Возвращен"
-    }
-    
-    @classmethod
-    def format_status(cls, status: RentalStatus) -> str:
-        """Форматирует статус с эмодзи"""
-        return cls.STATUS_EMOJIS.get(status, "❓ Неизвестно")
     
     @classmethod
     def create_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно") -> str:
