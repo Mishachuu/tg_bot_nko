@@ -42,28 +42,34 @@ class SetMockupService:
         #self.equipment_photo_repo = equipment_photo_repo
 
 
-    async def create_users(self, session: AsyncSession):
+    async def create_users(self, session):
         for user in USERS:
-            self.user_repo.add_user(session, user)
-    
-    async def create_booking(self, session: AsyncSession):
+            await self.user_repo.add_user(session, user)
+
+    async def create_booking(self, session):
         for booking in MOCK_BOOKINGS:
-            self.booking_repo.add_booking(session, booking)
+            await self.booking_repo.add_booking(session, booking)
+        await session.commit()
 
-    async def create_equipments(self, session: AsyncSession):
-        for equipmen in MOCK_EQUIPMENT:
-            self.equipment_repo.add_equipment(session, equipmen)
+    async def create_equipments(self, session):
+        for equipment in MOCK_EQUIPMENT:
+            await self.equipment_repo.add_equipment(session, equipment)
+        await session.commit()
 
-    async def create_categories(self, session: AsyncSession):
-        for category in CATEGORIES:
-            self.category_repo.add_category(session, category)
+    async def create_categories(self, session):
+        for cat in CATEGORIES:
+            await self.category_repo.add_category(session, cat)  # см. правку репозитория ниже
+        await session.commit()
 
-    async def create_city(self, session: AsyncSession):
+    async def create_city(self, session):
         for city in MOCK_CITY:
-            self.city_repo.add_city(session, city)
+            await self.city_repo.add_city(session, city["name"]) # repo ждёт name
+        await session.commit()
 
-    async def create_photos(self, session: AsyncSession):
+    async def create_photos(self, session):
         pass
+
+    # create_all_tables можно не использовать; если хочешь — не забудь await перед каждым вызовом
     
     async def create_all_tables(self, session: AsyncSession):
         self.create_users(session)

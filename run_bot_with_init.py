@@ -16,6 +16,8 @@ from app.repositories.booking_repository import BookingRepository
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.city_repository import CityRepository
+from app.db.tables import category_table, city_table
+
 
 
 
@@ -26,8 +28,8 @@ async def main():
     booking_repo = BookingRepository()
     repo_equipment = EquipmentRepository()
     repo_user = UserRepository()
-    repo_city = CityRepository()
-    repo_category = CategoryRepository()
+    repo_city = CityRepository(city_table)
+    repo_category = CategoryRepository(category_table)
     print("🚀 Запуск инициализации базы данных...")
     await db_init_main(booking_repo, repo_equipment, repo_user, repo_city, repo_category, MOCKUP_REQUIRED)
     print("🎯 Запуск телеграм бота...")
