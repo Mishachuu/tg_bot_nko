@@ -214,3 +214,17 @@ class EquipmentRepository:
         res = await session.execute(stmt)
         # rowcount у async + Core может быть None у некоторых драйверов, но чаще OK
         return (res.rowcount or 0) > 0
+    
+    async def list_by_owner(self, session: AsyncSession, owner_id: int):
+        res = await session.execute(select(self.model).where(self.model.user_id == owner_id))
+        return res.scalars().all()
+
+    async def set_publish(self, session: AsyncSession, equipment_id: int, is_publish: bool):
+        res = await session.execute(select(self.model).where(self.model.id == equipment_id))
+        eq = res.scalars().one_or_none()
+        if not eq:
+            return None
+        eq.is_publish = bool(is_publish)
+        await session.flush()
+        await session.refresh(eq)
+        return eq

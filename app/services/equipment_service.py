@@ -158,3 +158,11 @@ class EquipmentService:
             available.append(eq)
 
         return available
+    
+    async def list_by_owner(self, session, owner_id: int):
+        return await self._repo.list_by_owner(session, owner_id)
+
+    async def set_publish(self, session, equipment_id: int, is_publish: bool):
+        updated = await self._repo.set_publish(session, equipment_id, is_publish)
+        await session.commit()
+        return updated
