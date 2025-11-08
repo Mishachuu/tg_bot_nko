@@ -25,14 +25,21 @@ class Equipment(Base):
     latitude: Mapped[float] = mapped_column(nullable=True)
     longitude: Mapped[float] = mapped_column(nullable=True)
 
+    @property
+    def display_status(self) -> str:
+        if not self.is_approved:
+            return "На модерации"
+        return "Активно" if self.is_publish else "Скрыто"
+
     def to_dict(self) -> dict:
         return {
+            "id": self.id,
             "name": self.name,
             "city_id": self.city_id,
             "user_id": self.user_id,
-            "status": self.status.value,
             "category_id": self.category_id,
             "is_approved": self.is_approved,
+            "is_publish": self.is_publish,
             "description": self.description,
             "quantity": self.quantity,
             "created_at": self.created_at,
