@@ -7,7 +7,7 @@ from app.bot.bot_state import BotState
 from app.services.city_service import CityService
 from app.models.equipment import Equipment
 from app.models.user_app import AppUser
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from app.services.review_service import ReviewService
 from app.repositories.review_repository import ReviewRepository
 
@@ -349,7 +349,7 @@ class NKOBot:
                     quantity=data["quantity"],
                     is_approved=False,   # на модерации
                     is_publish=False,    # пока скрыто
-                    created_at=datetime.now(datetime.timezone.utc),
+                    created_at = datetime.now(timezone(timedelta(hours=4))),
                 )
 
                 created = await self.equipment_service.create_equipment(session, new_equipment)
