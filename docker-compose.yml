@@ -31,5 +31,19 @@ services:
     volumes:
       - .:/code
 
+  api:
+    build: .
+    container_name: nko_bot_api
+    command: ["python", "app/cli/run_api.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nko_user:nko_pass@db:5432/nko_bot_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+
 volumes:
   postgres_data:

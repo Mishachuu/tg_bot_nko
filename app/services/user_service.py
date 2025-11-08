@@ -9,6 +9,7 @@ class UserService:
     async def get_user_profile(self, session:AsyncSession, tg_id):
         user = await self.repo_user.get_by_tgId(session, tg_id)
         return user
+    
     async def check_user(self, session: AsyncSession, tg_id: int):
         """Проверяем существует ли пользователь в БД или мы должны его зарегестровать
             Return: 
@@ -19,6 +20,7 @@ class UserService:
         if(result == None):
             return False
         return True
+    
     async def create_user(self, 
                         session: AsyncSession, 
                         tg_id: int, 
