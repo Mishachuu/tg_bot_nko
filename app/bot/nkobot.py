@@ -184,7 +184,7 @@ class NKOBot:
     async def _show_main_menu(self, update: Update, message: str): 
         async with AsyncSessionLocal() as session:
             user = await self.user_service.get_user_profile(session, update.effective_user.id)
-        if(user.publish):
+        if(user.is_lessor):
             menu_buttons = [
                 ["➕ Добавить оборудование", "🛠️ Моё оборудование"],
                 ["➕ Добавить бронь", "📋 Моя бронь"],
@@ -192,7 +192,7 @@ class NKOBot:
                 ["📝 Оставить отзыв"],
                 ["ℹ️ Помощь"],
             ]
-        elif(user.publish == False):
+        elif(user.is_lessor == False):
             menu_buttons = [
                 ["🔍 Поиск", "📋 Моя бронь"],
                 ["Отправить запрос на публикацию оборудования"],
@@ -226,7 +226,7 @@ class NKOBot:
             async with AsyncSessionLocal() as session:
                 user = await self.user_service.get_user_profile(session, update.effective_user.id)
 
-            if not user or not user.publish:
+            if not user or not user.is_lessor:
                 await update.message.reply_text(
                     "❌ У вас нет прав на публикацию оборудования.\n"
                     "Если вы хотите стать арендодателем, сделайте запрос на публикацию."
@@ -376,9 +376,9 @@ class NKOBot:
         async with AsyncSessionLocal() as session:
             user: AppUser = await self.user_service.get_user_profile(session, tg_id)
         city_name = await self.city_service.get_name_city_by_id(session,tg_id)
-        if(user.publish):
+        if(user.is_lessor):
             publish_text = "Разрешено"
-        elif(not user.publish):
+        elif(not user.is_lessor):
             publish_text = "Запрещено"
         else:
             publish_text = "Обратитесь к @admin за разрешением"

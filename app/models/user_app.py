@@ -24,7 +24,7 @@ class AppUser(Base):
     tg_id = Column(Integer, nullable=False, unique=True)
     phone_number = Column(String, nullable=True, unique=True)
     email = Column(String, nullable=True, unique=True)
-    publish = Column(Boolean, nullable=True)
+    is_lessor = Column(Boolean, nullable=True)
     city_id = Column(Integer, nullable=True)
     score = Column(Float, default=0)
 
