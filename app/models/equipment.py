@@ -1,10 +1,8 @@
-from dataclasses import dataclass
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
-@dataclass
-class Equipment(Base):
+class Equipment(Base):  # УБРАТЬ @dataclass
     __tablename__ = "equipments"
     """
     Atribute:

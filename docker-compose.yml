@@ -22,7 +22,7 @@ services:
   app:
     build: .
     container_name: nko_bot_app
-    command: ["python", "run_bot_with_init.py"]
+    command: ["python", "app/run_bot_with_init.py"]
     depends_on:
       db:
         condition: service_healthy

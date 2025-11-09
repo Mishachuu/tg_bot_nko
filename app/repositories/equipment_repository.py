@@ -27,10 +27,10 @@ class EquipmentRepository:
         """
         Создает запись и возвращает созданную сущность с новым ID.
         """
-        session.add(Equipment)
+        session.add(equipment)
         await session.commit()
-        await session.refresh(Equipment)
-        return Equipment
+        await session.refresh(equipment)
+        return equipment
     
     async def get_all(self, session: AsyncSession):
         """Return:  List[Equipment]"""

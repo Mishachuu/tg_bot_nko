@@ -21,7 +21,7 @@ bookings_table = Table(
     Column("date_to", DateTime, nullable=False),
 )
 city_table = Table(
-    "сities",
+    "cities",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String, nullable=False, unique=True)
