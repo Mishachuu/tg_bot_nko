@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
-class Equipment(Base):  # УБРАТЬ @dataclass
+class Equipment(Base):
     __tablename__ = "equipments"
     """
     Atribute:

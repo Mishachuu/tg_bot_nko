@@ -1,30 +1,38 @@
-from sqlalchemy import insert, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.engine import Result
-
+from sqlalchemy import select
+from app.models.equipment_photo import EquipmentPhoto
 
 class EquipmentPhotoRepository:
-    def __init__(self, table):
-        self._t = table
+    def __init__(self):
+        self.model = EquipmentPhoto
 
     async def add_photo(self, session: AsyncSession, equipment_id: int, filename: str, content: bytes) -> int:
-        """Добавить фото, вернуть ID созданной записи."""
-        stmt = (
-            insert(self._t)
-            .values(equipment_id=equipment_id, filename=filename, content=content)
-            .returning(self._t.c.id)
+        """Добавляет фото оборудования"""
+        photo = EquipmentPhoto(
+            equipment_id=equipment_id,
+            filename=filename,
+            content=content
         )
-        res: Result = await session.execute(stmt)
-        new_id = res.scalar_one()
-        return new_id
+        session.add(photo)
+        await session.commit()
+        await session.refresh(photo)
+        return photo.id
 
     async def get_photos_by_equipment(self, session: AsyncSession, equipment_id: int) -> list[dict]:
-        """Вернуть список фото для оборудования."""
-        stmt = select(self._t).where(self._t.c.equipment_id == equipment_id)
-        res: Result = await session.execute(stmt)
-        return [dict(row._mapping) for row in res.fetchall()]
+        """Получает все фото оборудования"""
+        stmt = select(self.model).where(self.model.equipment_id == equipment_id)
+        result = await session.execute(stmt)
+        photos = result.scalars().all()
+        return [photo.to_dict() for photo in photos]
 
     async def delete_photo(self, session: AsyncSession, photo_id: int) -> bool:
-        stmt = delete(self._t).where(self._t.c.id == photo_id)
-        res = await session.execute(stmt)
-        return (res.rowcount or 0) > 0
+        """Удаляет фото по ID"""
+        stmt = select(self.model).where(self.model.id == photo_id)
+        result = await session.execute(stmt)
+        photo = result.scalar_one_or_none()
+        
+        if photo:
+            await session.delete(photo)
+            await session.commit()
+            return True
+        return False

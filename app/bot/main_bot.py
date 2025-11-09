@@ -1,6 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InputFile
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from app.db.session import AsyncSessionLocal
+from app.models.equipment import Equipment
 from app.services.category_service import CategoryService
 from app.services.equipment_service import EquipmentService
 from app.repositories.category_repository import CategoryRepository
@@ -10,12 +11,13 @@ from datetime import datetime
 import io
 
 class MainBot:
-    def __init__(self, user_service, equipment_service, booking_service, review_service, category_service):
+    def __init__(self, user_service, equipment_service, booking_service, review_service, category_service, equipment_photo_service):
         self.user_service = user_service
         self.equipment_service = equipment_service
         self.booking_service = booking_service
         self.review_service = review_service
         self.category_service = category_service
+        self.equipment_photo_service = equipment_photo_service
         self.formatter = EquipmentCardFormatter()
         
         self.user_states = {}
@@ -35,9 +37,11 @@ class MainBot:
         
         self.EQUIPMENT_STATES = {
             "ADD_NAME": "add_equipment_name",
-            "ADD_CATEGORY": "add_equipment_category",
             "ADD_DESCRIPTION": "add_equipment_description", 
-            "ADD_QUANTITY": "add_equipment_quantity"
+            "CHOOSING_CATEGORY": "choosing_category",
+            "ADD_QUANTITY": "add_equipment_quantity",
+            "ADD_LOCATION": "add_equipment_location",
+            "ADD_PHOTOS": "add_equipment_photos"
         }
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,6 +59,29 @@ class MainBot:
             
         # Если пользователь зарегистрирован, обрабатываем команды
         await self._handle_commands(update, user_id, message_text)
+
+    async def _handle_commands(self, update: Update, user_id: int, message_text: str):
+        """Обработка команд после регистрации"""
+        # Проверяем, находится ли пользователь в каком-либо состоянии
+        if user_id in self.user_states:
+            await self._handle_states(update, user_id, message_text)
+            return
+            
+        # Обработка основных команд меню
+        if message_text == "🔍 Найти оборудование":
+            await self._start_search_flow(update, user_id)
+            
+        elif message_text == "➕ Добавить оборудование":
+            await self._check_lessor_and_start_equipment_flow(update, user_id)
+            
+        elif message_text == "🛠️ Моё оборудование":
+            await self._check_lessor_and_show_equipment(update, user_id)
+            
+        elif message_text == "📋 Мои бронирования":
+            await self._show_my_bookings(update, user_id)
+            
+        else:
+            await update.message.reply_text("Не понял команду. Используйте кнопки меню.")
 
     async def _handle_registration(self, update: Update, user_id: int, message_text: str):
         """Обработка процесса регистрации"""
@@ -106,24 +133,6 @@ class MainBot:
             del self.user_states[user_id]
             await self._show_main_menu(update, user_id, "✅ Регистрация завершена!")
 
-    async def _handle_commands(self, update: Update, user_id: int, message_text: str):
-        """Обработка команд после регистрации"""
-        if message_text == "🔍 Найти оборудование":
-            await self._start_search_flow(update, user_id)
-            
-        elif message_text == "➕ Добавить оборудование":
-            await self._check_lessor_and_start_equipment_flow(update, user_id)
-            
-        elif message_text == "🛠️ Моё оборудование":
-            await self._check_lessor_and_show_equipment(update, user_id)
-            
-        elif message_text == "📋 Мои бронирования":
-            await self._show_my_bookings(update, user_id)
-            
-        else:
-            # Обработка состояний поиска/добавления оборудования
-            await self._handle_states(update, user_id, message_text)
-
     async def _handle_states(self, update: Update, user_id: int, message_text: str):
         """Обработка различных состояний"""
         if user_id not in self.user_states:
@@ -141,8 +150,15 @@ class MainBot:
             await self._handle_search_flow(update, user_id, message_text, state, data)
             
         # Обработка состояний добавления оборудования
-        elif state.startswith("add_equipment"):
+        elif state in [self.EQUIPMENT_STATES["ADD_NAME"],
+                    self.EQUIPMENT_STATES["ADD_DESCRIPTION"], 
+                    self.EQUIPMENT_STATES["ADD_QUANTITY"],
+                    self.EQUIPMENT_STATES["ADD_PHOTOS"]]:
             await self._handle_equipment_flow(update, user_id, message_text, state, data)
+            
+        # Обработка выбора категории для оборудования
+        elif state == self.EQUIPMENT_STATES["CHOOSING_CATEGORY"]:
+            await self._handle_category_selection(update, user_id, message_text, data)
             
         else:
             await update.message.reply_text("Не понял команду. Используйте кнопки меню.")
@@ -353,7 +369,10 @@ class MainBot:
             "state": self.EQUIPMENT_STATES["ADD_NAME"],
             "data": {}
         }
-        await update.message.reply_text("📝 Введите название оборудования:")
+        await update.message.reply_text(
+            "📝 Введите название оборудования:",
+            reply_markup=ReplyKeyboardRemove()
+        )
 
     async def _check_lessor_and_show_equipment(self, update: Update, user_id: int):
         """Показывает оборудование арендодателя"""
@@ -381,48 +400,208 @@ class MainBot:
         """Обработка шагов добавления оборудования"""
         if state == self.EQUIPMENT_STATES["ADD_NAME"]:
             data["name"] = message_text
-            self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_CATEGORY"]
-            await update.message.reply_text("📂 Введите ID категории:")
+            self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_DESCRIPTION"]
+            await update.message.reply_text("✍️ Введите описание оборудования:")
             
-        elif state == self.EQUIPMENT_STATES["ADD_CATEGORY"]:
-            try:
-                data["category_id"] = int(message_text)
-                self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_DESCRIPTION"]
-                await update.message.reply_text("✍️ Введите описание оборудования:")
-            except ValueError:
-                await update.message.reply_text("❌ Введите числовой ID категории.")
-                
         elif state == self.EQUIPMENT_STATES["ADD_DESCRIPTION"]:
             data["description"] = message_text
-            self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_QUANTITY"]
-            await update.message.reply_text("📦 Укажите количество:")
+            self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["CHOOSING_CATEGORY"]
+            await self._ask_categories_for_equipment(update, user_id)
             
         elif state == self.EQUIPMENT_STATES["ADD_QUANTITY"]:
             try:
-                data["quantity"] = int(message_text)
+                quantity = int(message_text)
+                if quantity <= 0:
+                    raise ValueError
+                data["quantity"] = quantity
+                self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_LOCATION"]
+                
+                location_keyboard = [[KeyboardButton("📍 Отправить локацию", request_location=True)]]
+                await update.message.reply_text(
+                    "📍 Отправьте локацию, откуда можно забрать оборудование:",
+                    reply_markup=ReplyKeyboardMarkup(location_keyboard, resize_keyboard=True)
+                )
+            except ValueError:
+                await update.message.reply_text("❌ Введите корректное количество (число больше 0):")
+                
+        elif state == self.EQUIPMENT_STATES["ADD_PHOTOS"]:
+            if message_text.lower() == "готово":
                 await self._create_equipment(update, user_id, data)
                 del self.user_states[user_id]
-            except ValueError:
-                await update.message.reply_text("❌ Введите число.")
+            else:
+                await update.message.reply_text(
+                    "📸 Отправьте фотографии оборудования или нажмите 'Готово' чтобы завершить:"
+                )
 
     async def _create_equipment(self, update: Update, user_id: int, data: dict):
-        """Создает оборудование в БД"""
+        """Создает оборудование в БД с фото"""
         async with AsyncSessionLocal() as session:
-            user = await self.user_service.get_user_profile(session, user_id)
+            try:
+                # Получаем пользователя
+                user = await self.user_service.get_user_profile(session, user_id)
+                
+                # Создаем объект Equipment вместо словаря
+                equipment = Equipment(
+                    name=data["name"],
+                    description=data["description"],
+                    user_id=user.id,
+                    category_id=data["category_id"],
+                    quantity=data["quantity"],
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                    is_approved=False,  # На модерации
+                    is_publish=False,
+                    created_at=datetime.now()  # Явно устанавливаем дату создания
+                )
+                
+                # Передаем объект Equipment в сервис
+                created_equipment = await self.equipment_service.create_equipment(session, equipment)
+                
+                # Добавляем фото если есть
+                if "photos" in data and data["photos"]:
+                    for photo_data in data["photos"]:
+                        await self.equipment_photo_service.add_photo(
+                            session, 
+                            created_equipment.id, 
+                            photo_data["filename"], 
+                            bytes(photo_data["content"])
+                        )
+                
+                await session.commit()
+                
+                # Формируем сообщение об успехе
+                message = (
+                    "✅ Оборудование успешно создано и отправлено на модерацию!\n\n"
+                    f"📦 *{data['name']}*\n"
+                    f"📝 {data['description']}\n"
+                    f"📂 Категория: {data['category_name']}\n"
+                    f"📊 Количество: {data['quantity']} шт.\n"
+                    f"📍 Локация: {'указана' if data.get('latitude') else 'не указана'}\n"
+                    f"📸 Фото: {len(data.get('photos', []))} шт.\n\n"
+                    f"🆔 ID оборудования: {created_equipment.id}\n"
+                    "⏳ Статус: 🟡 На модерации"
+                )
+                
+                await update.message.reply_text(
+                    message,
+                    parse_mode='Markdown',
+                    reply_markup=ReplyKeyboardRemove()
+                )
+                
+                # Показываем главное меню
+                await self._show_main_menu(update, user_id)
+                
+            except Exception as e:
+                await session.rollback()
+                await update.message.reply_text(
+                    f"❌ Ошибка при создании оборудования: {e}",
+                    reply_markup=ReplyKeyboardRemove()
+                )
+                await self._show_main_menu(update, user_id)
+
+    async def handle_equipment_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обрабатывает получение фото для оборудования"""
+        user_id = update.effective_user.id
+        
+        if (user_id in self.user_states and 
+            self.user_states[user_id]["state"] == self.EQUIPMENT_STATES["ADD_PHOTOS"]):
             
-            equipment_data = {
-                "name": data["name"],
-                "user_id": user.id,
-                "category_id": data["category_id"],
-                "description": data["description"],
-                "quantity": data["quantity"],
-                "is_approved": False,
-                "is_publish": False,
-                "created_at": datetime.now()
+            photo = update.message.photo[-1]  # Берем самое качественное фото
+            data = self.user_states[user_id]["data"]
+            
+            # Сохраняем информацию о фото (будем добавлять в БД при создании оборудования)
+            if "photos" not in data:
+                data["photos"] = []
+                
+            # Скачиваем фото
+            photo_file = await photo.get_file()
+            photo_bytes = await photo_file.download_as_bytearray()
+            
+            data["photos"].append({
+                "filename": f"equipment_photo_{len(data['photos']) + 1}.jpg",
+                "content": photo_bytes
+            })
+            
+            await update.message.reply_text(
+                f"✅ Фото добавлено! Добавлено фото: {len(data['photos'])}\n"
+                "Можете отправить еще фото или нажмите 'Готово' чтобы завершить."
+            )
+
+    async def handle_location(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработка получения локации для поиска И для оборудования"""
+        user_id = update.effective_user.id
+        
+        # Обработка локации для поиска оборудования
+        if (user_id in self.user_states and 
+            self.user_states[user_id]["state"] == self.SEARCH_STATES["ASKING_LOCATION"]):
+            
+            location = update.message.location
+            self.user_states[user_id]["data"]["location"] = {
+                "lat": location.latitude,
+                "lon": location.longitude
             }
+            self.user_states[user_id]["state"] = self.SEARCH_STATES["ASKING_RADIUS"]
             
-            equipment = await self.equipment_service.create_equipment(session, equipment_data)
-            await update.message.reply_text(f"✅ Оборудование '{equipment.name}' создано и отправлено на модерацию!")
+            await update.message.reply_text(
+                "📏 Укажите радиус поиска в километрах (по умолчанию 30 км):",
+                reply_markup=ReplyKeyboardRemove()
+            )
+        
+        # Обработка локации для добавления оборудования
+        elif (user_id in self.user_states and 
+            self.user_states[user_id]["state"] == self.EQUIPMENT_STATES["ADD_LOCATION"]):
+            
+            location = update.message.location
+            data = self.user_states[user_id]["data"]
+            data["latitude"] = location.latitude
+            data["longitude"] = location.longitude
+            
+            self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_PHOTOS"]
+            
+            await update.message.reply_text(
+                "✅ Локация сохранена!\n\n"
+                "📸 Теперь отправьте фотографии оборудования (можно несколько).\n"
+                "Когда закончите, нажмите 'Готово'.",
+                reply_markup=ReplyKeyboardMarkup([["Готово"]], resize_keyboard=True)
+            )
+
+    async def _handle_category_selection(self, update: Update, user_id: int, message_text: str, data: dict):
+        """Обрабатывает выбор категории"""
+        async with AsyncSessionLocal() as session:
+            categories = await self.category_service.list_categories(session)
+
+        category = next((c for c in categories if c.name == message_text), None)
+        if not category:
+            # Если категория не найдена, показываем клавиатуру снова с сообщением об ошибке
+            await update.message.reply_text("❌ Неизвестная категория. Пожалуйста, выберите категорию из списка ниже:")
+            await self._ask_categories_for_equipment(update, user_id)
+            return
+
+        data["category_id"] = category.id
+        data["category_name"] = category.name
+        self.user_states[user_id]["state"] = self.EQUIPMENT_STATES["ADD_QUANTITY"]
+        
+        await update.message.reply_text(
+            f"✅ Выбрана категория: {category.name}\n\n"
+            "📦 Укажите доступное количество штук:",
+            reply_markup=ReplyKeyboardRemove()
+        )
+
+    async def _ask_categories_for_equipment(self, update: Update, user_id: int):
+        """Запрашивает выбор категории для оборудования"""
+        async with AsyncSessionLocal() as session:
+            categories = await self.category_service.list_categories(session)
+
+        if not categories:
+            await update.message.reply_text("⚠️ В базе нет категорий.")
+            return
+
+        keyboard = []
+        for category in categories:
+            keyboard.append([category.name])
+
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text("📂 Выберите категорию оборудования:", reply_markup=reply_markup)
 
     # ========== ОБЩИЕ ФУНКЦИИ ==========
     async def _show_my_bookings(self, update: Update, user_id: int):
@@ -461,25 +640,6 @@ class MainBot:
         reply_markup = ReplyKeyboardMarkup(menu_buttons, resize_keyboard=True)
         text = message or "Выберите действие:"
         await update.message.reply_text(text, reply_markup=reply_markup)
-
-    async def handle_location(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработка получения локации"""
-        user_id = update.effective_user.id
-        
-        if (user_id in self.user_states and 
-            self.user_states[user_id]["state"] == self.SEARCH_STATES["ASKING_LOCATION"]):
-            
-            location = update.message.location
-            self.user_states[user_id]["data"]["location"] = {
-                "lat": location.latitude,
-                "lon": location.longitude
-            }
-            self.user_states[user_id]["state"] = self.SEARCH_STATES["ASKING_RADIUS"]
-            
-            await update.message.reply_text(
-                "📏 Укажите радиус поиска в километрах (по умолчанию 30 км):",
-                reply_markup=ReplyKeyboardRemove()
-            )
 
     async def handle_contact(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработка получения контакта"""
@@ -528,5 +688,6 @@ class MainBot:
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message),
             MessageHandler(filters.LOCATION, self.handle_location),
             MessageHandler(filters.CONTACT, self.handle_contact),
-            CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)")
+            CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)"),
+            MessageHandler(filters.PHOTO & ~filters.COMMAND, self.handle_equipment_photo),
         ]

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.api.dependencies import get_db, get_user_service
-from app.api.schemas import (
+from app.api.schemas.user_schema import (
     UserCreate, UserResponse, UserCreateWithLessor, 
     UserUpdate, UserScoreUpdate, UserLessorStatusUpdate,
     UserListResponse, UserDetailedResponse

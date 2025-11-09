@@ -1,11 +1,12 @@
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import BigInteger
 from app.db.base import Base
 
 class AppUser(Base):
     __tablename__ = "users"
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    tg_id: Mapped[int] = mapped_column(nullable=False, unique=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     name: Mapped[str] = mapped_column(nullable=True)
     phone_number: Mapped[str] = mapped_column(nullable=True)
     email: Mapped[str] = mapped_column(nullable=True)

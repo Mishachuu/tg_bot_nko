@@ -14,6 +14,7 @@ from app.repositories.booking_repository import BookingRepository
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.review_repository import ReviewRepository
+from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
 
 async def main():
     """Запускает инициализацию БД, затем бота"""
@@ -26,13 +27,14 @@ async def main():
     repo_user = UserRepository()
     repo_category = CategoryRepository()
     repo_review = ReviewRepository()
+    equipment_photo_repo = EquipmentPhotoRepository()
     
     print("🚀 Запуск инициализации базы данных...")
     await db_init_main(booking_repo, repo_equipment, repo_user, repo_category, MOCKUP_REQUIRED)
     print("🎯 Запуск телеграм бота...")
     
     # Передаем все репозитории в bot_main
-    await bot_main(booking_repo, repo_equipment, repo_user, repo_category, repo_review)
+    await bot_main(booking_repo, repo_equipment, repo_user, repo_category, repo_review, equipment_photo_repo)
 
 if __name__ == "__main__":
     asyncio.run(main())

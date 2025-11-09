@@ -10,6 +10,7 @@ from app.services.equipment_service import EquipmentService
 from app.services.user_service import UserService
 from app.services.category_service import CategoryService
 from app.services.review_service import ReviewService
+from app.services.equipment_photo_service import EquipmentPhotoService
 
 # Новая модульная архитектура бота
 from app.bot.router import BotRouter
@@ -20,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_review):
+async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_review, equipment_photo_repo):
     """Основная функция запуска бота с новой модульной архитектурой"""
     
     # Инициализация сервисов с переданными репозиториями
@@ -29,6 +30,7 @@ async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_revi
     user_service = UserService(repo_user)
     category_service = CategoryService(repo_category)
     review_service = ReviewService(repo_review)
+    equipment_photo_service = EquipmentPhotoService(equipment_photo_repo)
 
     # Загрузка токена бота
     load_dotenv("app/.env")
@@ -43,7 +45,8 @@ async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_revi
         equipment_service=equipment_service,
         booking_service=booking_service,
         review_service=review_service,
-        category_service=category_service  # ДОБАВЬТЕ ЭТУ СТРОКУ
+        category_service=category_service,
+        equipment_photo_service = equipment_photo_service
     )
 
     # Создаем приложение

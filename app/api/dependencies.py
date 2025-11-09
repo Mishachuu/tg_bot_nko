@@ -29,7 +29,7 @@ def get_category_service() -> CategoryService:
     return CategoryService(repo)
 
 
-def get_equipment_service() -> EquipmentService:
+async def get_equipment_service() -> EquipmentService:
     equipment_repo = EquipmentRepository()
     booking_repo = BookingRepository()
     booking_service = BookingService(booking_repo)

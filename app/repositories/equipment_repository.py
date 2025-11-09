@@ -13,6 +13,7 @@ from math import radians, cos, sin, asin, sqrt
 from sqlalchemy import func
 from app.helpers.gis_helper import calculate_distance
 from app.models.equipment import Equipment
+from typing import List
 
 
 class EquipmentRepository:
@@ -39,25 +40,19 @@ class EquipmentRepository:
         return result.scalars().all() 
 
     async def get_by_id(self, session: AsyncSession, equipment_id: int) -> Equipment | None:
-        # 1) Получаем объект
         res = await session.execute(select(self.model).where(self.model.id == equipment_id))
         equipment = res.scalars().one_or_none()
-        if equipment is None:
-            return None
+        return equipment 
 
     async def get_by_user_id(self, session: AsyncSession, user_id: int):
-        # 1) Получаем объект
         res = await session.execute(select(self.model).where(self.model.user_id == user_id))
         equipment = res.scalars().all()
-        if equipment is None:
-            return None
+        return equipment
         
     async def get_by_category_id(self, session: AsyncSession, category_id: int):
-        # 1) Получаем объект
         res = await session.execute(select(self.model).where(self.model.category_id == category_id))
         equipment = res.scalars().all()
-        if equipment is None:
-            return None 
+        return equipment
 
     async def update(self, session: AsyncSession, equipment_id: int, changes: dict) -> Equipment | None:
         """
@@ -218,3 +213,55 @@ class EquipmentRepository:
         await session.flush()
         await session.refresh(eq)
         return eq
+    
+    async def get_total_count(self, session: AsyncSession) -> int:
+        """Получить общее количество записей"""
+        stmt = select(func.count(Equipment.id))
+        result = await session.execute(stmt)
+        return result.scalar()
+
+    async def get_by_approval_status(
+        self, 
+        session: AsyncSession, 
+        is_approved: bool
+    ) -> List[Equipment]:
+        """Получить по статусу одобрения"""
+        stmt = select(Equipment).where(Equipment.is_approved == is_approved)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_by_publish_status(
+        self, 
+        session: AsyncSession, 
+        is_publish: bool
+    ) -> List[Equipment]:
+        """Получить по статусу публикации"""
+        stmt = select(Equipment).where(Equipment.is_publish == is_publish)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def search(
+        self,
+        session: AsyncSession,
+        category_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        is_approved: Optional[bool] = None,
+        is_publish: Optional[bool] = None,
+        name: Optional[str] = None
+    ) -> List[Equipment]:
+        """Расширенный поиск"""
+        stmt = select(Equipment)
+        
+        if category_id is not None:
+            stmt = stmt.where(Equipment.category_id == category_id)
+        if user_id is not None:
+            stmt = stmt.where(Equipment.user_id == user_id)
+        if is_approved is not None:
+            stmt = stmt.where(Equipment.is_approved == is_approved)
+        if is_publish is not None:
+            stmt = stmt.where(Equipment.is_publish == is_publish)
+        if name:
+            stmt = stmt.where(Equipment.name.ilike(f"%{name}%"))
+        
+        result = await session.execute(stmt)
+        return result.scalars().all()

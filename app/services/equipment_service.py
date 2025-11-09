@@ -161,3 +161,78 @@ class EquipmentService:
         updated = await self._repo.set_publish(session, equipment_id, is_publish)
         await session.commit()
         return updated
+    
+    async def create_equipment_from_params(
+        self, 
+        session: AsyncSession,
+        name: str,
+        user_id: int,
+        category_id: int,
+        description: Optional[str] = None,
+        quantity: int = 1,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None
+    ) -> Equipment:
+        """Создать оборудование с параметрами (для API)"""
+        equipment = Equipment(
+            name=name,
+            user_id=user_id,
+            category_id=category_id,
+            description=description,
+            quantity=quantity,
+            latitude=latitude,
+            longitude=longitude,
+            is_approved=False,
+            is_publish=False
+        )
+        return await self.create_equipment(session, equipment)
+
+    async def get_total_count(self, session: AsyncSession) -> int:
+        """Получить общее количество оборудования"""
+        return await self._repo.get_total_count(session)
+
+    async def get_equipment_by_approval_status(
+        self, 
+        session: AsyncSession, 
+        is_approved: bool
+    ) -> List[Equipment]:
+        """Получить оборудование по статусу одобрения"""
+        return await self._repo.get_by_approval_status(session, is_approved)
+
+    async def get_equipment_by_publish_status(
+        self, 
+        session: AsyncSession, 
+        is_publish: bool
+    ) -> List[Equipment]:
+        """Получить оборудование по статусу публикации"""
+        return await self._repo.get_by_publish_status(session, is_publish)
+
+    async def search_equipment(
+        self,
+        session: AsyncSession,
+        category_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        is_approved: Optional[bool] = None,
+        is_publish: Optional[bool] = None,
+        name: Optional[str] = None
+    ) -> List[Equipment]:
+        """Расширенный поиск оборудования"""
+        return await self._repo.search(
+            session,
+            category_id=category_id,
+            user_id=user_id,
+            is_approved=is_approved,
+            is_publish=is_publish,
+            name=name
+        )
+
+    async def approve_with_status(
+        self, 
+        session: AsyncSession, 
+        equipment_id: int, 
+        is_approved: bool
+    ) -> Equipment | None:
+        """Обновить статус одобрения с указанием статуса"""
+        updated = await self._repo.update(session, equipment_id, {"is_approved": is_approved})
+        await session.commit()
+        return updated
