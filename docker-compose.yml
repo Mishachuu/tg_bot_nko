@@ -29,31 +29,31 @@ services:
     volumes:
       - .:/code
 
-  # api:
-  #   build: .
-  #   container_name: nko_bot_api
-  #   command: ["python", "app/cli/run_api.py"]
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   environment:
-  #     DATABASE_URL: postgresql+asyncpg://nko_user:nko_pass@db:5432/nko_bot_db
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - .:/code
+  api:
+    build: .
+    container_name: nko_bot_api
+    command: ["python", "app/cli/run_api.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nko_user:nko_pass@db:5432/nko_bot_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
 
-  # admin-panel:
-  #   build: ./nko-admin-panel
-  #   container_name: nko_admin_panel
-  #   ports:
-  #     - "4200:4200"
-  #   volumes:
-  #     - ./nko-admin-panel:/app
-  #     - /app/node_modules
-  #   environment:
-  #     - CHOKIDAR_USEPOLLING=true
-  #   command: npm start
+  admin-panel:
+    build: ./nko-admin-panel
+    container_name: nko_admin_panel
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./nko-admin-panel:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: ["npm", "start", "--", "--host", "0.0.0.0", "--poll", "1000"]
 
 volumes:
   postgres_data:
