@@ -45,5 +45,17 @@ services:
     volumes:
       - .:/code
 
+  admin-panel:
+    build: ./nko-admin-panel
+    container_name: nko_admin_panel
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./nko-admin-panel:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm start
+
 volumes:
   postgres_data:

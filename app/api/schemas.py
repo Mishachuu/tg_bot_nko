@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     city_id: Optional[int]
     email: Optional[str]
     phone_number: Optional[str]
+    is_lessor: bool
     
     model_config = ConfigDict(from_attributes=True)
 

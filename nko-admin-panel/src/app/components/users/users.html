@@ -1,0 +1,152 @@
+<div class="users-container">
+  <!-- Header -->
+  <div class="header">
+    <h2>Управление пользователями</h2>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="loadUsers()">
+        <mat-icon>refresh</mat-icon>
+        Обновить
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Поиск по имени</mat-label>
+        <input matInput [(ngModel)]="searchQuery" (keyup)="onSearch()" placeholder="Введите имя...">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Статус арендодателя</mat-label>
+        <mat-select [(ngModel)]="lessorFilter" (selectionChange)="loadUsers()">
+          <mat-option value="">Все пользователи</mat-option>
+          <!-- <mat-option value="true">Арендодатели</mat-option>
+          <mat-option value="false">Не арендодатели</mat-option> -->
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Users Table -->
+  <mat-card>
+    <div class="table-container">
+      <table mat-table [dataSource]="dataSource" matSort class="users-table">
+        
+        <!-- ID Column -->
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+          <td mat-cell *matCellDef="let user">{{ user.id }}</td>
+        </ng-container>
+
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Имя</th>
+          <td mat-cell *matCellDef="let user">
+            <div class="user-name">
+              <strong>{{ user.name }}</strong>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Telegram ID Column -->
+        <ng-container matColumnDef="tg_id">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Telegram ID</th>
+          <td mat-cell *matCellDef="let user">{{ user.tg_id }}</td>
+        </ng-container>
+
+        <!-- Email Column -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
+          <td mat-cell *matCellDef="let user">
+            {{ user.email || 'Не указан' }}
+          </td>
+        </ng-container>
+
+        <!-- Phone Column -->
+        <ng-container matColumnDef="phone_number">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Телефон</th>
+          <td mat-cell *matCellDef="let user">
+            {{ user.phone_number || 'Не указан' }}
+          </td>
+        </ng-container>
+
+        <!-- Score Column -->
+        <ng-container matColumnDef="score">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Рейтинг</th>
+          <td mat-cell *matCellDef="let user">
+            <mat-chip-set>
+              <mat-chip [color]="user.score && user.score >= 4 ? 'primary' : 'warn'">
+                {{ user.score || 0 }}
+              </mat-chip>
+            </mat-chip-set>
+          </td>
+        </ng-container>
+
+        <!-- Lessor Status Column -->
+        <ng-container matColumnDef="is_lessor">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Статус</th>
+          <td mat-cell *matCellDef="let user">
+            <mat-chip-set>
+              <mat-chip 
+                [color]="user.is_lessor ? 'accent' : 'basic'" 
+                (click)="toggleLessorStatus(user)">
+                {{ user.is_lessor ? 'Арендодатель' : 'Пользователь' }}
+              </mat-chip>
+            </mat-chip-set>
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Действия</th>
+          <td mat-cell *matCellDef="let user">
+            <button mat-icon-button [matMenuTriggerFor]="menu">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="editUser(user)">
+                <mat-icon>edit</mat-icon>
+                <span>Редактировать</span>
+              </button>
+              <button mat-menu-item (click)="deleteUser(user.id!)" class="delete-action">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Удалить</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <!-- Loading State -->
+      @if (isLoading()) {
+        <div class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Загрузка пользователей...</p>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!isLoading() && dataSource.data.length === 0) {
+        <div class="empty-state">
+          <mat-icon>people_outline</mat-icon>
+          <p>Пользователи не найдены</p>
+        </div>
+      }
+
+      <!-- Pagination -->
+      <mat-paginator
+        [length]="totalUsers()"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[5, 10, 20, 50]"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
+    </div>
+  </mat-card>
+</div>

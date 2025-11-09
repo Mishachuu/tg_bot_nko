@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 # from app.api.routers import equipment, bookings, users, categories
 from app.api.routers import users
 
@@ -6,6 +7,14 @@ app = FastAPI(
     title="NKO Bot API",
     description="API for equipment rental bot",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Разрешить все домены
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
