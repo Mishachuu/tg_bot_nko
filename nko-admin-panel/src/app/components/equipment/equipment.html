@@ -1,0 +1,178 @@
+<div class="equipment-container">
+  <!-- Header -->
+  <div class="header">
+    <h2>Управление оборудованием</h2>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="loadEquipment()">
+        <mat-icon>refresh</mat-icon>
+        Обновить
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Поиск по названию</mat-label>
+        <input matInput [(ngModel)]="searchQuery" (keyup)="onSearch()" placeholder="Введите название...">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Статус одобрения</mat-label>
+        <mat-select [(ngModel)]="approvalFilter" (selectionChange)="loadEquipment()">
+          <mat-option value="">Все статусы</mat-option>
+          <mat-option value="true">Одобрено</mat-option>
+          <mat-option value="false">На модерации</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Статус публикации</mat-label>
+        <mat-select [(ngModel)]="publishFilter" (selectionChange)="loadEquipment()">
+          <mat-option value="">Все статусы</mat-option>
+          <mat-option value="true">Опубликовано</mat-option>
+          <mat-option value="false">Скрыто</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Equipment Table -->
+  <mat-card>
+    <div class="table-container">
+      <table mat-table [dataSource]="dataSource" matSort class="equipment-table">
+        
+        <!-- ID Column -->
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+          <td mat-cell *matCellDef="let equipment">{{ equipment.id }}</td>
+        </ng-container>
+
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Название</th>
+          <td mat-cell *matCellDef="let equipment">
+            <div class="equipment-name">
+              <strong>{{ equipment.name }}</strong>
+              <div class="description" *ngIf="equipment.description">
+                {{ equipment.description }}
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- User ID Column -->
+        <ng-container matColumnDef="user_id">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Владелец ID</th>
+          <td mat-cell *matCellDef="let equipment">{{ equipment.user_id }}</td>
+        </ng-container>
+
+        <!-- Category ID Column -->
+        <ng-container matColumnDef="category_id">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Категория ID</th>
+          <td mat-cell *matCellDef="let equipment">{{ equipment.category_id }}</td>
+        </ng-container>
+
+        <!-- Quantity Column -->
+        <ng-container matColumnDef="quantity">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Количество</th>
+          <td mat-cell *matCellDef="let equipment">
+            <mat-chip-set>
+              <mat-chip>{{ equipment.quantity }} шт.</mat-chip>
+            </mat-chip-set>
+          </td>
+        </ng-container>
+
+        <!-- Approval Status Column -->
+        <ng-container matColumnDef="is_approved">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Одобрение</th>
+          <td mat-cell *matCellDef="let equipment">
+            <mat-chip-set>
+              <mat-chip 
+                [color]="equipment.is_approved ? 'primary' : 'warn'" 
+                (click)="toggleApprovalStatus(equipment)">
+                {{ equipment.is_approved ? '✅ Одобрено' : '⏳ На модерации' }}
+              </mat-chip>
+            </mat-chip-set>
+          </td>
+        </ng-container>
+
+        <!-- Publish Status Column -->
+        <ng-container matColumnDef="is_publish">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Публикация</th>
+          <td mat-cell *matCellDef="let equipment">
+            <mat-chip-set>
+              <mat-chip 
+                [color]="equipment.is_publish ? 'accent' : 'basic'" 
+                (click)="togglePublishStatus(equipment)">
+                {{ equipment.is_publish ? '🌐 Опубликовано' : '👁️ Скрыто' }}
+              </mat-chip>
+            </mat-chip-set>
+          </td>
+        </ng-container>
+
+        <!-- Created At Column -->
+        <ng-container matColumnDef="created_at">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Создано</th>
+          <td mat-cell *matCellDef="let equipment">
+            {{ equipment.created_at | date:'dd.MM.yyyy HH:mm' }}
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Действия</th>
+          <td mat-cell *matCellDef="let equipment">
+            <button mat-icon-button [matMenuTriggerFor]="menu">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="editEquipment(equipment)">
+                <mat-icon>edit</mat-icon>
+                <span>Редактировать</span>
+              </button>
+              <button mat-menu-item (click)="viewEquipmentDetails(equipment)">
+                <mat-icon>visibility</mat-icon>
+                <span>Просмотр</span>
+              </button>
+              <button mat-menu-item (click)="deleteEquipment(equipment.id!)" class="delete-action">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Удалить</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <!-- Loading State -->
+      @if (isLoading()) {
+        <div class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Загрузка оборудования...</p>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!isLoading() && dataSource.data.length === 0) {
+        <div class="empty-state">
+          <mat-icon>construction</mat-icon>
+          <p>Оборудование не найдено</p>
+        </div>
+      }
+
+      <!-- Pagination -->
+      <mat-paginator
+        [length]="totalEquipment()"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[5, 10, 20, 50]"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
+    </div>
+  </mat-card>
+</div>

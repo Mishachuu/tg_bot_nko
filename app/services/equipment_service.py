@@ -59,7 +59,7 @@ class EquipmentService:
     async def find_by_category(
         self, session: AsyncSession, category_id: int, *, limit: int = 100, offset: int = 0
     ) -> list[Equipment]:
-        return await self._repo.get_by_category(session, category_id, limit=limit, offset=offset)
+        return await self._repo.get_by_category_id(session, category_id)
 
     async def update_equipment(self, session: AsyncSession, equipment_id: int, **fields) -> Equipment | None:
         """
@@ -154,8 +154,8 @@ class EquipmentService:
 
         return available
     
-    async def list_by_owner(self, session, owner_id: int):
-        return await self._repo.list_by_owner(session, owner_id)
+    async def list_by_owner(self, session: AsyncSession, owner_id: int, limit: int = 100, offset: int = 0):
+        return await self._repo.list_by_owner(session, owner_id, limit=limit, offset=offset)
 
     async def set_publish(self, session, equipment_id: int, is_publish: bool):
         updated = await self._repo.set_publish(session, equipment_id, is_publish)
@@ -194,18 +194,22 @@ class EquipmentService:
     async def get_equipment_by_approval_status(
         self, 
         session: AsyncSession, 
-        is_approved: bool
+        is_approved: bool,
+        limit: int = 100,
+        offset: int = 0
     ) -> List[Equipment]:
         """Получить оборудование по статусу одобрения"""
-        return await self._repo.get_by_approval_status(session, is_approved)
+        return await self._repo.get_by_approval_status(session, is_approved, limit=limit, offset=offset)
 
     async def get_equipment_by_publish_status(
         self, 
         session: AsyncSession, 
-        is_publish: bool
+        is_publish: bool,
+        limit: int = 100,
+        offset: int = 0
     ) -> List[Equipment]:
         """Получить оборудование по статусу публикации"""
-        return await self._repo.get_by_publish_status(session, is_publish)
+        return await self._repo.get_by_publish_status(session, is_publish, limit=limit, offset=offset)
 
     async def search_equipment(
         self,
@@ -214,7 +218,9 @@ class EquipmentService:
         user_id: Optional[int] = None,
         is_approved: Optional[bool] = None,
         is_publish: Optional[bool] = None,
-        name: Optional[str] = None
+        name: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
     ) -> List[Equipment]:
         """Расширенный поиск оборудования"""
         return await self._repo.search(
@@ -223,7 +229,9 @@ class EquipmentService:
             user_id=user_id,
             is_approved=is_approved,
             is_publish=is_publish,
-            name=name
+            name=name,
+            limit=limit,
+            offset=offset
         )
 
     async def approve_with_status(

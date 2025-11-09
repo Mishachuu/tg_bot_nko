@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InputFile
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InputFile, InputMediaPhoto
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from app.db.session import AsyncSessionLocal
 from app.models.equipment import Equipment
@@ -279,7 +279,7 @@ class MainBot:
         await self._ask_categories(update, update.effective_user.id, data["selected_categories"])
 
     async def _show_equipment_by_categories_and_date(self, update: Update, user_id: int, data: dict):
-        """Показывает найденное оборудование"""
+        """Показывает найденное оборудование с фото в одном сообщении"""
         async with AsyncSessionLocal() as session:
             available_equipment = []
             
@@ -323,6 +323,9 @@ class MainBot:
                 # Получаем название категории из базы данных
                 category_name = await self._get_category_name(session, eq.category_id)
                 
+                # Получаем фото оборудования
+                photos = await self.equipment_photo_service.list_photos(session, eq.id)
+                
                 card_text = self.formatter.create_equipment_card(
                     eq, 
                     f"Владелец ID: {eq.user_id}",
@@ -336,9 +339,35 @@ class MainBot:
                     )
                     card_text += f"\n📍 Расстояние: {distance:.1f} км"
                 
-                await update.message.reply_text(card_text, parse_mode='Markdown')
+                # Если есть фото, отправляем все фото одним сообщением с текстом
+                if photos:
+                    await self._send_equipment_with_photos(update, eq, card_text, photos)
+                else:
+                    # Если фото нет, отправляем только текст с кнопками
+                    await update.message.reply_text(
+                        card_text, 
+                        parse_mode='Markdown'
+                    )
 
             await self._show_main_menu(update, user_id)
+   
+    async def _send_photos_individually(self, update: Update, photos: list, caption: str):
+        """Отправляет фото по одному (запасной метод)"""
+        if photos:
+            first_photo = photos[0]
+            photo_file = InputFile(io.BytesIO(first_photo.photo_data), filename=first_photo.filename)
+            await update.message.reply_photo(
+                photo=photo_file,
+                caption=caption,
+                parse_mode='Markdown'
+            )
+            
+            for additional_photo in photos[1:]:
+                additional_photo_file = InputFile(
+                    io.BytesIO(additional_photo.photo_data), 
+                    filename=additional_photo.filename
+                )
+                await update.message.reply_photo(photo=additional_photo_file)
 
     async def _get_category_name(self, session, category_id: int) -> str:
         """Получает название категории по ID из базы данных"""
@@ -375,7 +404,7 @@ class MainBot:
         )
 
     async def _check_lessor_and_show_equipment(self, update: Update, user_id: int):
-        """Показывает оборудование арендодателя"""
+        """Показывает оборудование арендодателя с фото в одном сообщении"""
         async with AsyncSessionLocal() as session:
             user = await self.user_service.get_user_profile(session, user_id)
             
@@ -390,12 +419,68 @@ class MainBot:
             await update.message.reply_text("У вас пока нет оборудования.")
             return
             
-        response = "🛠️ Ваше оборудование:\n\n"
-        for eq in equipment_list:
-            response += f"• {eq.name} (ID: {eq.id}) - {eq.display_status}\n"
+        await update.message.reply_text(f"🛠️ Ваше оборудование ({len(equipment_list)} позиций):")
+        
+        for equipment in equipment_list:
+            # Получаем фото оборудования
+            async with AsyncSessionLocal() as session:
+                photos = await self.equipment_photo_service.list_photos(session, equipment.id)
             
-        await update.message.reply_text(response)
+            # Создаем карточку оборудования
+            category_name = await self._get_category_name(session, equipment.category_id)
+            card_text = self.formatter.create_equipment_card(
+                equipment, 
+                f"Вы (ID: {user.id})",
+                category_name
+            )
+            
+            # Если есть фото, отправляем их медиагруппой с текстом
+            if photos:
+                await self._send_equipment_with_photos(update, equipment, card_text, photos)
+            else:
+                # Если фото нет, отправляем просто текст
+                await update.message.reply_text(card_text, parse_mode='Markdown')
 
+    async def _send_equipment_with_photos(self, update: Update, equipment, card_text: str, photos: list):
+        """Отправляет оборудование с фото в одном сообщении"""
+        try:            
+            media_group = []
+            
+            for i, photo_data in enumerate(photos):
+                photo_content = photo_data.get("content")
+                
+                if photo_content:
+                    if isinstance(photo_content, memoryview):
+                        photo_content = photo_content.tobytes()
+                    
+                    media = InputMediaPhoto(
+                        media=photo_content,
+                        caption=card_text if i == 0 else None
+                    )
+                    media_group.append(media)
+                else:
+                    print(f"⚠️ Нет content для фото {photo_data.get('id')} оборудования {equipment.id}")
+            
+            if media_group:
+                await update.message.reply_media_group(media=media_group)
+            else:
+                # Если не удалось создать медиагруппу, отправляем просто текст
+                await update.message.reply_text(card_text, parse_mode='Markdown')
+                
+        except Exception as e:
+            print(f"❌ Ошибка при отправке фото оборудования {equipment.id}: {e}")
+            # Fallback: отправляем текст и фото по отдельности
+            await update.message.reply_text(card_text, parse_mode='Markdown')
+            for photo_data in photos:
+                photo_content = photo_data.get("content")
+                if photo_content:
+                    if isinstance(photo_content, memoryview):
+                        photo_content = photo_content.tobytes()
+                    try:
+                        await update.message.reply_photo(photo=photo_content)
+                    except Exception as photo_error:
+                        print(f"❌ Ошибка при отправке отдельного фото: {photo_error}")
+    
     async def _handle_equipment_flow(self, update: Update, user_id: int, message_text: str, state: str, data: dict):
         """Обработка шагов добавления оборудования"""
         if state == self.EQUIPMENT_STATES["ADD_NAME"]:
@@ -426,8 +511,23 @@ class MainBot:
                 
         elif state == self.EQUIPMENT_STATES["ADD_PHOTOS"]:
             if message_text.lower() == "готово":
-                await self._create_equipment(update, user_id, data)
-                del self.user_states[user_id]
+                photo_count = len(data.get("photos", []))
+                if photo_count == 0:
+                    # Спрашиваем подтверждение если фото нет
+                    confirm_keyboard = ReplyKeyboardMarkup([["Да, без фото", "Добавить фото"]], resize_keyboard=True)
+                    await update.message.reply_text(
+                        "Вы не добавили ни одного фото. Продолжить без фото?",
+                        reply_markup=confirm_keyboard
+                    )
+                    data["awaiting_photo_confirmation"] = True
+                else:
+                    await self._create_equipment(update, user_id, data)
+            elif data.get("awaiting_photo_confirmation"):
+                if message_text.lower() == "да, без фото":
+                    await self._create_equipment(update, user_id, data)
+                else:
+                    data["awaiting_photo_confirmation"] = False
+                    await update.message.reply_text("📸 Отправьте фотографии оборудования:")
             else:
                 await update.message.reply_text(
                     "📸 Отправьте фотографии оборудования или нажмите 'Готово' чтобы завершить:"

@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Iterable, Sequence
 from datetime import datetime
 
-from sqlalchemy import insert, select, update as sql_update, delete as sql_delete
+from sqlalchemy import insert, select, update as sql_update, delete as sql_delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.engine import Result
 from sqlalchemy.sql import Select, Update, Delete, Insert
@@ -13,7 +13,7 @@ from math import radians, cos, sin, asin, sqrt
 from sqlalchemy import func
 from app.helpers.gis_helper import calculate_distance
 from app.models.equipment import Equipment
-from typing import List
+from typing import List, Optional
 
 
 class EquipmentRepository:
@@ -33,11 +33,11 @@ class EquipmentRepository:
         await session.refresh(equipment)
         return equipment
     
-    async def get_all(self, session: AsyncSession):
+    async def get_all(self, session: AsyncSession, limit: int = 100, offset: int = 0):
         """Return:  List[Equipment]"""
-        stmt = select(self.model)
+        stmt = select(self.model).limit(limit).offset(offset)
         result = await session.execute(stmt)
-        return result.scalars().all() 
+        return result.scalars().all()
 
     async def get_by_id(self, session: AsyncSession, equipment_id: int) -> Equipment | None:
         res = await session.execute(select(self.model).where(self.model.id == equipment_id))
@@ -49,10 +49,16 @@ class EquipmentRepository:
         equipment = res.scalars().all()
         return equipment
         
-    async def get_by_category_id(self, session: AsyncSession, category_id: int):
-        res = await session.execute(select(self.model).where(self.model.category_id == category_id))
-        equipment = res.scalars().all()
-        return equipment
+    async def get_by_category_id(self, session: AsyncSession, category_id: int, limit: int = 100, offset: int = 0):
+        """Получить оборудование по категории"""
+        stmt = (
+            select(self.model)
+            .where(self.model.category_id == category_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
     async def update(self, session: AsyncSession, equipment_id: int, changes: dict) -> Equipment | None:
         """
@@ -200,8 +206,16 @@ class EquipmentRepository:
         print(f"📦 ФИНАЛЬНЫЙ результат после limit/offset: {len(result)} записей")
         return result
     
-    async def list_by_owner(self, session: AsyncSession, owner_id: int):
-        res = await session.execute(select(self.model).where(self.model.user_id == owner_id))
+    async def list_by_owner(self, session: AsyncSession, owner_id: int, limit: int = 100, offset: int = 0):
+        """Получить оборудование по владельцу"""
+        stmt = (
+            select(self.model)
+            .where(self.model.user_id == owner_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().all()
         return res.scalars().all()
 
     async def set_publish(self, session: AsyncSession, equipment_id: int, is_publish: bool):
@@ -223,20 +237,34 @@ class EquipmentRepository:
     async def get_by_approval_status(
         self, 
         session: AsyncSession, 
-        is_approved: bool
+        is_approved: bool,
+        limit: int = 100,
+        offset: int = 0
     ) -> List[Equipment]:
         """Получить по статусу одобрения"""
-        stmt = select(Equipment).where(Equipment.is_approved == is_approved)
+        stmt = (
+            select(self.model)
+            .where(self.model.is_approved == is_approved)
+            .limit(limit)
+            .offset(offset)
+        )
         result = await session.execute(stmt)
         return result.scalars().all()
 
     async def get_by_publish_status(
         self, 
         session: AsyncSession, 
-        is_publish: bool
+        is_publish: bool,
+        limit: int = 100,
+        offset: int = 0
     ) -> List[Equipment]:
         """Получить по статусу публикации"""
-        stmt = select(Equipment).where(Equipment.is_publish == is_publish)
+        stmt = (
+            select(self.model)
+            .where(self.model.is_publish == is_publish)
+            .limit(limit)
+            .offset(offset)
+        )
         result = await session.execute(stmt)
         return result.scalars().all()
 
@@ -247,21 +275,24 @@ class EquipmentRepository:
         user_id: Optional[int] = None,
         is_approved: Optional[bool] = None,
         is_publish: Optional[bool] = None,
-        name: Optional[str] = None
+        name: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
     ) -> List[Equipment]:
         """Расширенный поиск"""
-        stmt = select(Equipment)
+        stmt = select(self.model)
         
         if category_id is not None:
-            stmt = stmt.where(Equipment.category_id == category_id)
+            stmt = stmt.where(self.model.category_id == category_id)
         if user_id is not None:
-            stmt = stmt.where(Equipment.user_id == user_id)
+            stmt = stmt.where(self.model.user_id == user_id)
         if is_approved is not None:
-            stmt = stmt.where(Equipment.is_approved == is_approved)
+            stmt = stmt.where(self.model.is_approved == is_approved)
         if is_publish is not None:
-            stmt = stmt.where(Equipment.is_publish == is_publish)
+            stmt = stmt.where(self.model.is_publish == is_publish)
         if name:
-            stmt = stmt.where(Equipment.name.ilike(f"%{name}%"))
+            stmt = stmt.where(self.model.name.ilike(f"%{name}%"))
         
+        stmt = stmt.limit(limit).offset(offset)
         result = await session.execute(stmt)
         return result.scalars().all()

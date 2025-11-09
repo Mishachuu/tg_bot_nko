@@ -6,6 +6,10 @@ class EquipmentPhotoService:
     def __init__(self, repo: EquipmentPhotoRepository):
         self._repo = repo
 
+    async def get_photos_by_equipment_id(self, session: AsyncSession, equipment_id: int):
+        """Получить все фото для оборудования"""
+        return await self._repo.get_photos_by_equipment(session, equipment_id)
+
     async def add_photo(self, session: AsyncSession, equipment_id: int, filename: str, content: bytes) -> int:
         new_id = await self._repo.add_photo(session, equipment_id, filename, content)
         await session.commit()

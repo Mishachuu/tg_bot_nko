@@ -12,7 +12,7 @@ class EquipmentCardFormatter:
         card_lines = [
             f"*{equipment.name or 'Без названия'}*",
             f"Описание: {equipment.description or 'Нет описания'}",
-            f"Количество: {equipment.quantity=} шт.",
+            f"Количество: {equipment.quantity} шт.",
             f"Категория: {category}",
             f"Арендодатель: {landlord_name}"
         ]

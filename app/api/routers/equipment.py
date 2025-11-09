@@ -142,45 +142,57 @@ async def update_equipment_quantity(
         raise HTTPException(status_code=404, detail="Equipment not found")
     return equipment
 
-# ПОИСК И ФИЛЬТРАЦИЯ
+# ПОИСК И ФИЛЬТРАЦИЯ С ПАГИНАЦИЕЙ
 @router.get("/user/{user_id}", response_model=List[EquipmentResponse])
 async def get_equipment_by_owner(
     user_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    """Получить оборудование по владельцу"""
-    equipments = await equipment_service.list_by_owner(session, user_id)
+    """Получить оборудование по владельцу с пагинацией"""
+    equipments = await equipment_service.list_by_owner(session, user_id, limit=limit, offset=skip)
     return equipments
 
 @router.get("/category/{category_id}", response_model=List[EquipmentResponse])
 async def get_equipment_by_category(
     category_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    """Получить оборудование по категории"""
-    equipments = await equipment_service.find_by_category(session, category_id)
+    """Получить оборудование по категории с пагинацией"""
+    equipments = await equipment_service.find_by_category(session, category_id, limit=limit, offset=skip)
     return equipments
 
 @router.get("/status/approved", response_model=List[EquipmentResponse])
 async def get_approved_equipment(
     is_approved: bool = Query(True),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    """Получить оборудование по статусу одобрения"""
-    equipments = await equipment_service.get_equipment_by_approval_status(session, is_approved)
+    """Получить оборудование по статусу одобрения с пагинацией"""
+    equipments = await equipment_service.get_equipment_by_approval_status(
+        session, is_approved, limit=limit, offset=skip
+    )
     return equipments
 
 @router.get("/status/published", response_model=List[EquipmentResponse])
 async def get_published_equipment(
     is_publish: bool = Query(True),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    """Получить оборудование по статусу публикации"""
-    equipments = await equipment_service.get_equipment_by_publish_status(session, is_publish)
+    """Получить оборудование по статусу публикации с пагинацией"""
+    equipments = await equipment_service.get_equipment_by_publish_status(
+        session, is_publish, limit=limit, offset=skip
+    )
     return equipments
 
 @router.post("/search", response_model=List[EquipmentResponse])
@@ -189,14 +201,16 @@ async def search_equipment(
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    """Расширенный поиск оборудования"""
+    """Расширенный поиск оборудования с пагинацией"""
     equipments = await equipment_service.search_equipment(
         session,
         category_id=search_params.category_id,
         user_id=search_params.user_id,
         is_approved=search_params.is_approved,
         is_publish=search_params.is_publish,
-        name=search_params.name
+        name=search_params.name,
+        limit=search_params.limit or 100,
+        offset=search_params.skip or 0
     )
     return equipments
 
@@ -205,16 +219,18 @@ async def get_equipment_near_location(
     latitude: float = Query(..., description="Широта"),
     longitude: float = Query(..., description="Долгота"),
     radius_km: float = Query(10, ge=0.1, le=1000, description="Радиус в километрах"),
+    skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    """Найти оборудование поблизости"""
+    """Найти оборудование поблизости с пагинацией"""
     equipments = await equipment_service.find_by_location(
         session,
         latitude=latitude,
         longitude=longitude,
         radius_km=radius_km,
-        limit=limit
+        limit=limit,
+        offset=skip
     )
     return equipments

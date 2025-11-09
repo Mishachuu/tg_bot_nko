@@ -62,3 +62,5 @@ class EquipmentSearchParams(BaseModel):
     is_approved: Optional[bool] = None
     is_publish: Optional[bool] = None
     name: Optional[str] = None
+    skip: Optional[int] = 0
+    limit: Optional[int] = 100
