@@ -72,12 +72,6 @@ class UserRepository:
         result = await session.execute(stmt)
         return result.scalars().all()
 
-    async def get_users_by_city(self, session: AsyncSession, city_id: int) -> List[AppUser]:
-        """Получить пользователей по городу"""
-        stmt = select(self.model).where(self.model.city_id == city_id)
-        result = await session.execute(stmt)
-        return result.scalars().all()
-
     async def get_users_by_lessor_status(self, session: AsyncSession, is_lessor: bool) -> List[AppUser]:
         """Получить пользователей по статусу арендодателя"""
         stmt = select(self.model).where(self.model.is_lessor == is_lessor)

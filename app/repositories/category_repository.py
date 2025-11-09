@@ -1,18 +1,24 @@
-from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.category import Category
 
 class CategoryRepository:
-    def __init__(self, table):
-        self._t = table
+    def __init__(self):
+        self.model = Category
 
-    async def add_category(self, session, category: dict):
-        # ожидаем дикт вроде {"id": 1, "name": "...", "is_accepted": True}
-        stmt = insert(self._t).values(**category).returning(self._t)
-        res = await session.execute(stmt)
-        return res.fetchone()
-
+    async def get_by_id(self, session: AsyncSession, category_id: int) -> Category | None:
+        stmt = select(self.model).where(self.model.id == category_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_all(self, session: AsyncSession):
-        stmt = select(self._t).order_by(self._t.c.id)
-        res = await session.execute(stmt)
-        return [dict(r._mapping) for r in res.fetchall()]
+        stmt = select(self.model)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def create(self, session: AsyncSession, category_data: dict) -> Category:
+        category = Category(**category_data)
+        session.add(category)
+        await session.commit()
+        await session.refresh(category)
+        return category

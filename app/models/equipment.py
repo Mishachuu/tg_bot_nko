@@ -12,7 +12,6 @@ class Equipment(Base):  # УБРАТЬ @dataclass
     """
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=True)
-    city_id: Mapped[int] = mapped_column(nullable=True)
     user_id: Mapped[int] = mapped_column(nullable=False)
     category_id: Mapped[int] = mapped_column(nullable=True)
     is_approved: Mapped[bool] = mapped_column(default=False)
@@ -33,7 +32,6 @@ class Equipment(Base):  # УБРАТЬ @dataclass
         return {
             "id": self.id,
             "name": self.name,
-            "city_id": self.city_id,
             "user_id": self.user_id,
             "category_id": self.category_id,
             "is_approved": self.is_approved,

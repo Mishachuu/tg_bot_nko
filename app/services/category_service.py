@@ -5,6 +5,10 @@ class CategoryService:
     def __init__(self, repo: CategoryRepository):
         self._repo = repo
 
+    async def get_by_id(self, session: AsyncSession, category_id: int):
+        """Получить категорию по ID"""
+        return await self._repo.get_by_id(session, category_id)
+
     async def seed_categories(self, session: AsyncSession, categories: list[str]):
         for name in categories:
             try:

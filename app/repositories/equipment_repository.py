@@ -136,7 +136,6 @@ class EquipmentRepository:
         rows = res.fetchall()
         return [self._row_to_entity(r) for r in rows]
 
-    # === а это вынести в Service и так же переписать
     async def get_by_category_and_location(
         self,
         session: AsyncSession,
@@ -153,20 +152,19 @@ class EquipmentRepository:
         """
         print(f"🔍 ПОИСК: категория={category_id}, локация=({latitude}, {longitude}), радиус={radius_km}км")
         
-        # Сначала получаем все оборудование категории
+        # Сначала получаем все оборудование категории с помощью ORM
         stmt = (
-            select(self._t)
-            .where(self._t.c.category_id == category_id)
-            .where(self._t.c.is_approved == True)
-            .where(self._t.c.latitude.isnot(None))
-            .where(self._t.c.longitude.isnot(None))
+            select(self.model)
+            .where(self.model.category_id == category_id)
+            .where(self.model.is_approved == True)
+            .where(self.model.latitude.isnot(None))
+            .where(self.model.longitude.isnot(None))
         )
         
         print(f"SQL запрос: {stmt}")
         
-        res: Result = await session.execute(stmt)
-        rows = res.fetchall()
-        all_equipment = [self._row_to_entity(r) for r in rows]
+        result = await session.execute(stmt)
+        all_equipment = result.scalars().all()
         
         print(f"📊 Всего оборудования в категории {category_id}: {len(all_equipment)}")
         
@@ -206,14 +204,6 @@ class EquipmentRepository:
         result = filtered_equipment[offset:offset + limit]
         print(f"📦 ФИНАЛЬНЫЙ результат после limit/offset: {len(result)} записей")
         return result
-
-        """
-        Удаляет запись. Возвращает True, если что-то удалили.
-        """
-        stmt: Delete = sql_delete(self._t).where(self._t.c.id == equipment_id)
-        res = await session.execute(stmt)
-        # rowcount у async + Core может быть None у некоторых драйверов, но чаще OK
-        return (res.rowcount or 0) > 0
     
     async def list_by_owner(self, session: AsyncSession, owner_id: int):
         res = await session.execute(select(self.model).where(self.model.user_id == owner_id))

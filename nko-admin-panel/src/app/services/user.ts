@@ -7,7 +7,6 @@ export interface User {
   id?: number;
   tg_id: number;
   name: string;
-  city_id?: number;
   email?: string;
   phone_number?: string;
   is_lessor?: boolean;
@@ -24,7 +23,6 @@ export interface UserListResponse {
 
 export interface UserUpdate {
   name?: string;
-  city_id?: number;
   email?: string;
   phone_number?: string;
   is_lessor?: boolean;
@@ -91,11 +89,6 @@ export class UserService {
   // Обновить статус арендодателя
   updateLessorStatus(userId: number, isLessor: boolean): Observable<User> {
     return this.http.patch<User>(`${this.baseUrl}/${userId}/lessor-status`, { is_lessor: isLessor });
-  }
-
-  // Получить пользователей по городу
-  getUsersByCity(cityId: number): Observable<User[]> {
-    return this.http.get<User[]>(`${this.baseUrl}/city/${cityId}`);
   }
 
   // Поиск пользователей по имени

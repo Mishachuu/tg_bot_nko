@@ -1,21 +1,29 @@
-from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.engine import Result
-from app.db.tables import reviews_table
+from sqlalchemy import select
+from app.models.review import Review
 
 class ReviewRepository:
-    def __init__(self, table=reviews_table):
-        self.t = table
+    def __init__(self):
+        self.model = Review
 
-    async def add(self, session: AsyncSession, data: dict) -> int:
-        stmt = insert(self.t).values(**data).returning(self.t.c.id)
-        res: Result = await session.execute(stmt)
-        return res.scalar_one()
+    async def create(self, session: AsyncSession, review_data: dict) -> Review:
+        review = Review(**review_data)
+        session.add(review)
+        await session.commit()
+        await session.refresh(review)
+        return review
 
-    async def list_by_equipment(self, session: AsyncSession, equipment_id: int) -> list[dict]:
-        res = await session.execute(select(self.t).where(self.t.c.equipment_id == equipment_id))
-        return [dict(r._mapping) for r in res.fetchall()]
+    async def get_by_id(self, session: AsyncSession, review_id: int) -> Review | None:
+        stmt = select(self.model).where(self.model.id == review_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
 
-    async def list_by_user(self, session: AsyncSession, renter_id: int) -> list[dict]:
-        res = await session.execute(select(self.t).where(self.t.c.renter_id == renter_id))
-        return [dict(r._mapping) for r in res.fetchall()]
+    async def get_by_equipment_id(self, session: AsyncSession, equipment_id: int):
+        stmt = select(self.model).where(self.model.equipment_id == equipment_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_by_renter_id(self, session: AsyncSession, renter_id: int):
+        stmt = select(self.model).where(self.model.renter_id == renter_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()

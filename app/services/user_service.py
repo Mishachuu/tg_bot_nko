@@ -26,14 +26,12 @@ class UserService:
                         session: AsyncSession, 
                         tg_id: int, 
                         name: str,
-                        city_id: int = None,
                         email: str = None,
                         phone_number: str = None 
                         ):
         user = AppUser(
                     tg_id=tg_id,
                     name=name,
-                    city_id=city_id,
                     email=email,
                     phone_number=phone_number)
         return await self.repo_user.add_user(session, user)
@@ -50,7 +48,6 @@ class UserService:
                          session: AsyncSession,
                          user_id: int,
                          name: Optional[str] = None,
-                         city_id: Optional[int] = None,
                          email: Optional[str] = None,
                          phone_number: Optional[str] = None,
                          is_lessor: Optional[bool] = None,
@@ -60,8 +57,6 @@ class UserService:
         update_data = {}
         if name is not None:
             update_data["name"] = name
-        if city_id is not None:
-            update_data["city_id"] = city_id
         if email is not None:
             update_data["email"] = email
         if phone_number is not None:
@@ -79,10 +74,6 @@ class UserService:
     async def delete_user(self, session: AsyncSession, user_id: int) -> bool:
         """Удалить пользователя по ID"""
         return await self.repo_user.delete_by_id(session, user_id)
-
-    async def get_users_by_city(self, session: AsyncSession, city_id: int) -> List[AppUser]:
-        """Получить пользователей по городу"""
-        return await self.repo_user.get_users_by_city(session, city_id)
 
     async def search_users_by_name(self, session: AsyncSession, name_query: str) -> List[AppUser]:
         """Поиск пользователей по имени"""
@@ -105,7 +96,6 @@ class UserService:
                                            tg_id: int,
                                            name: str,
                                            is_lessor: bool = False,
-                                           city_id: int = None,
                                            email: str = None,
                                            phone_number: str = None,
                                            score: float = 0.0
@@ -114,7 +104,6 @@ class UserService:
         user = AppUser(
             tg_id=tg_id,
             name=name,
-            city_id=city_id,
             email=email,
             phone_number=phone_number,
             is_lessor=is_lessor,

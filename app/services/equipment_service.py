@@ -61,11 +61,6 @@ class EquipmentService:
     ) -> list[Equipment]:
         return await self._repo.get_by_category(session, category_id, limit=limit, offset=offset)
 
-    async def find_by_city(
-        self, session: AsyncSession, city_id: int, *, limit: int = 100, offset: int = 0
-    ) -> list[Equipment]:
-        return await self._repo.get_by_city(session, city_id, limit=limit, offset=offset)
-
     async def update_equipment(self, session: AsyncSession, equipment_id: int, **fields) -> Equipment | None:
         """
         Обновление с простыми правилами:

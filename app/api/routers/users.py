@@ -23,7 +23,6 @@ async def create_user(
         session,
         user_data.tg_id,
         user_data.name,
-        user_data.city_id,
         user_data.email,
         user_data.phone_number
     )
@@ -91,7 +90,6 @@ async def update_user(
         session,
         user_id,
         name=user_data.name,
-        city_id=user_data.city_id,
         email=user_data.email,
         phone_number=user_data.phone_number,
         is_lessor=user_data.is_lessor,
@@ -139,16 +137,6 @@ async def update_lessor_status(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@router.get("/city/{city_id}", response_model=List[UserResponse])
-async def get_users_by_city(
-    city_id: int,
-    session: AsyncSession = Depends(get_db),
-    user_service: UserService = Depends(get_user_service)
-):
-    """Получить пользователей по городу"""
-    users = await user_service.get_users_by_city(session, city_id)
-    return users
-
 @router.get("/search/name", response_model=List[UserResponse])
 async def search_users_by_name(
     query: str = Query(..., min_length=1),
@@ -181,7 +169,6 @@ async def create_user_with_lessor_status(
         user_data.tg_id,
         user_data.name,
         user_data.is_lessor,
-        user_data.city_id,
         user_data.email,
         user_data.phone_number,
         user_data.score

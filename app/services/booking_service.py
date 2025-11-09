@@ -35,3 +35,7 @@ class BookingService:
         """Проверяет, свободно ли оборудование на выбранные даты"""
         conflicts = await self.repo.find_conflicting(session, equipment_id, date_from, date_to)
         return len(conflicts) == 0
+    
+    async def get_user_bookings(self, session, user_id: int):
+        """Получить бронирования пользователя"""
+        return await self.repo.get_by_user_id(session, user_id)
