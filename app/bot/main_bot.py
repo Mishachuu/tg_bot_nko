@@ -4,14 +4,18 @@ from app.db.session import AsyncSessionLocal
 from app.models.equipment import Equipment
 from app.services.category_service import CategoryService
 from app.services.equipment_service import EquipmentService
+from app.services.user_service import UserService
 from app.repositories.category_repository import CategoryRepository
 from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.helpers.gis_helper import calculate_distance
 from datetime import datetime
+from app.models.user_app import AppUser
+
 import io
 
+
 class MainBot:
-    def __init__(self, user_service, equipment_service, booking_service, review_service, category_service, equipment_photo_service):
+    def __init__(self, user_service:UserService, equipment_service, booking_service, review_service, category_service, equipment_photo_service):
         self.user_service = user_service
         self.equipment_service = equipment_service
         self.booking_service = booking_service
@@ -58,18 +62,18 @@ class MainBot:
             return
             
         # Если пользователь зарегистрирован, обрабатываем команды
-        await self._handle_commands(update, user_id, message_text)
+        await self._handle_commands(update, context, user_id, message_text)
 
-    async def _handle_commands(self, update: Update, user_id: int, message_text: str):
+    async def _handle_commands(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, message_text: str):
         """Обработка команд после регистрации"""
         # Проверяем, находится ли пользователь в каком-либо состоянии
         if user_id in self.user_states:
-            await self._handle_states(update, user_id, message_text)
+            await self._handle_states(update, context, user_id, message_text)
             return
             
         # Обработка основных команд меню
         if message_text == "🔍 Найти оборудование":
-            await self._start_search_flow(update, user_id)
+            await self._start_search_flow(update,context , user_id)
             
         elif message_text == "➕ Добавить оборудование":
             await self._check_lessor_and_start_equipment_flow(update, user_id)
@@ -133,7 +137,7 @@ class MainBot:
             del self.user_states[user_id]
             await self._show_main_menu(update, user_id, "✅ Регистрация завершена!")
 
-    async def _handle_states(self, update: Update, user_id: int, message_text: str):
+    async def _handle_states(self, update: Update,context: ContextTypes.DEFAULT_TYPE, user_id: int, message_text: str):
         """Обработка различных состояний"""
         if user_id not in self.user_states:
             await update.message.reply_text("Не понял команду. Используйте кнопки меню.")
@@ -147,7 +151,7 @@ class MainBot:
                     self.SEARCH_STATES["CHOOSING_CATEGORIES"],
                     self.SEARCH_STATES["ENTERING_DATE_FROM"], 
                     self.SEARCH_STATES["ENTERING_DATE_TO"]]:
-            await self._handle_search_flow(update, user_id, message_text, state, data)
+            await self._handle_search_flow(update, context, user_id, message_text, state, data)
             
         # Обработка состояний добавления оборудования
         elif state in [self.EQUIPMENT_STATES["ADD_NAME"],
@@ -164,7 +168,7 @@ class MainBot:
             await update.message.reply_text("Не понял команду. Используйте кнопки меню.")
 
     # ========== ПОИСК ОБОРУДОВАНИЯ ==========
-    async def _start_search_flow(self, update: Update, user_id: int):
+    async def _start_search_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
         """Начинает процесс поиска оборудования"""
         self.user_states[user_id] = {
             "state": self.SEARCH_STATES["ASKING_LOCATION"],
@@ -183,7 +187,7 @@ class MainBot:
             reply_markup=ReplyKeyboardMarkup(location_keyboard, resize_keyboard=True)
         )
 
-    async def _handle_search_flow(self, update: Update, user_id: int, message_text: str, state: str, data: dict):
+    async def _handle_search_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, message_text: str, state: str, data: dict):
         """Обработка шагов поиска оборудования"""
         if state == self.SEARCH_STATES["ASKING_RADIUS"]:
             try:
@@ -226,7 +230,7 @@ class MainBot:
                     await update.message.reply_text("⚠️ Дата окончания не может быть раньше даты начала.")
                     return
                     
-                await self._show_equipment_by_categories_and_date(update, user_id, data)
+                await self._show_equipment_by_categories_and_date(update, context, user_id, data)
                 del self.user_states[user_id]  # Завершаем процесс поиска
                 
             except ValueError:
@@ -278,7 +282,7 @@ class MainBot:
 
         await self._ask_categories(update, update.effective_user.id, data["selected_categories"])
 
-    async def _show_equipment_by_categories_and_date(self, update: Update, user_id: int, data: dict):
+    async def _show_equipment_by_categories_and_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, data: dict):
         """Показывает найденное оборудование с фото в одном сообщении"""
         async with AsyncSessionLocal() as session:
             available_equipment = []
@@ -325,12 +329,25 @@ class MainBot:
                 
                 # Получаем фото оборудования
                 photos = await self.equipment_photo_service.list_photos(session, eq.id)
+                # Полдучаем пользователя 
                 
+                user: AppUser = await self.user_service.get_user_by_id(session, eq.user_id)
+
+                if user and user.tg_id:
+                    try:
+                        tguser = await context.bot.get_chat(user.tg_id)  
+                        username = tguser.username
+                        owner_info = f" @{username}" if username else " Неизвестен"
+                    except Exception as e:
+                        owner_info = " Недоступен"
+                else:
+                    owner_info = " Не указан"
+
                 card_text = self.formatter.create_equipment_card(
                     eq, 
-                    f"Владелец ID: {eq.user_id}",
+                    owner_info,
                     category_name
-                )
+)
                 
                 if user_location and eq.latitude and eq.longitude:
                     distance = calculate_distance(
@@ -430,7 +447,7 @@ class MainBot:
             category_name = await self._get_category_name(session, equipment.category_id)
             card_text = self.formatter.create_equipment_card(
                 equipment, 
-                f"Вы (ID: {user.id})",
+                f"Вы (ID: {user.id})", # нах нам тут user.id ? 
                 category_name
             )
             
