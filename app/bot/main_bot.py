@@ -582,6 +582,10 @@ class MainBot:
                     "⏳ Статус: 🟡 На модерации"
                 )
                 
+                # ОЧИСТКА СОСТОЯНИЯ ПОСЛЕ УСПЕШНОГО СОЗДАНИЯ
+                if user_id in self.user_states:
+                    del self.user_states[user_id]
+                
                 await update.message.reply_text(
                     message,
                     parse_mode='Markdown',
@@ -593,12 +597,16 @@ class MainBot:
                 
             except Exception as e:
                 await session.rollback()
+                # ТАКЖЕ ОЧИЩАЕМ СОСТОЯНИЕ ПРИ ОШИБКЕ
+                if user_id in self.user_states:
+                    del self.user_states[user_id]
+                    
                 await update.message.reply_text(
                     f"❌ Ошибка при создании оборудования: {e}",
                     reply_markup=ReplyKeyboardRemove()
                 )
                 await self._show_main_menu(update, user_id)
-
+   
     async def handle_equipment_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обрабатывает получение фото для оборудования"""
         user_id = update.effective_user.id
