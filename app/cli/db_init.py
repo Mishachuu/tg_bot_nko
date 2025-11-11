@@ -1,53 +1,92 @@
 import asyncio
-from sqlalchemy import text
-from app.db.session import engine, AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, engine
 from app.db.base import Base
+from app.models import equipment, user_app, category, booking, review  # импорт всех моделей
 from app.services.set_mockup_service import SetMockupService
+from sqlalchemy import text
 
-# Надёжно ждём готовности Postgres
-async def wait_for_db(max_attempts: int = 30, delay_sec: float = 1.0):
-    attempt = 1
-    while True:
-        try:
-            async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
-            print("✅ Соединение с БД установлено.")
-            return
-        except Exception as e:
-            if attempt >= max_attempts:
-                print(f"❌ БД так и не поднялась: {e}")
-                raise
-            print(f"⏳ БД ещё не готова (попытка {attempt}/{max_attempts}): {e}")
-            await asyncio.sleep(delay_sec)
-            attempt += 1
+async def create_tables():
+    """Создает все таблицы в базе данных"""
+    try:
+        print("🗄️ Создание таблиц в базе данных...")
+        
+        # Создаем все таблицы
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            
+        print("✅ Таблицы успешно созданы")
+    except Exception as e:
+        print(f"❌ Ошибка при создании таблиц: {e}")
+        raise
 
-async def init_database():
-    """Создаёт таблицы в БД."""
-    print("🧱 Инициализация базы данных...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Таблицы (metadata) созданы.")
-
-async def seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_city, repo_category):
-    service = SetMockupService(repo_equipment, booking_repo, repo_category, repo_user, repo_city)
+async def seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_category):
+    """Загрузка тестовых данных с правильным порядком параметров"""
     async with AsyncSessionLocal() as session:
-        await service.create_users(session)
-        await service.create_categories(session)
-        await service.create_city(session)
-        await service.create_equipments(session)
-        await service.create_booking(session)
-        # await service.create_photos(session)
+        # ПРАВИЛЬНЫЙ ПОРЯДОК: user_repo, equipment_repo, category_repo, booking_repo
+        mockup_service = SetMockupService(
+            user_repo=repo_user,           # первый параметр - user_repo
+            equipment_repo=repo_equipment, # второй - equipment_repo  
+            category_repo=repo_category,   # третий - category_repo
+            booking_repo=booking_repo      # четвертый - booking_repo
+        )
+        
+        await mockup_service.set_mockup()
 
-async def db_init_main(booking_repo, repo_equipment, repo_user, repo_city, repo_category, seed: bool = False):
-    print("🚀 Запуск инициализации базы данных...")
-    # 1) ждём готовности Postgres
-    await wait_for_db()
-    # 2) создаём таблицы
-    await init_database()
-    # 3) при необходимости — сидим мок-данные
-    if seed in (True, "True", "true", "1"):  # т.к. из .env приходит строка
-        await seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_city, repo_category)
+async def db_init_main(booking_repo, repo_equipment, repo_user, repo_category, MOCKUP_REQUIRED):
+    """Инициализация базы данных с обработкой ошибок"""
+    try:
+        # 1. Сначала создаем таблицы
+        await create_tables()
+        
+        # 2. Затем загружаем тестовые данные (если нужно)
+        if MOCKUP_REQUIRED and MOCKUP_REQUIRED.lower() == 'true':
+            print("📦 Загрузка тестовых данных...")
+            
+            try:
+                await seed_mockup_data(booking_repo, repo_equipment, repo_user, repo_category)
+                print("✅ Тестовые данные успешно загружены")
+                
+                # 3. Обновляем sequences после загрузки данных
+                async with AsyncSessionLocal() as session:
+                    await update_sequences(session)
+                    
+            except Exception as e:
+                print(f"⚠️ Не удалось загрузить тестовые данные: {e}")
+                # Продолжаем работу даже если мокап не загрузился
+                    
+        else:
+            print("ℹ️ Загрузка тестовых данных отключена")
+                
+    except Exception as e:
+        print(f"💥 Ошибка при инициализации БД: {e}")
+        raise
 
-if __name__ == "__main__":
-    # для ручного запуска можно добавить заглушки/моки репоз
-    pass
+async def update_sequences(session):
+    """Обновляет sequences для всех таблиц после загрузки мокап данных"""
+    try:
+        print("🔄 Обновление sequences...")
+        
+        tables = ['users', 'equipments', 'categories', 'bookings', 'reviews']
+        
+        for table in tables:
+            # Проверяем есть ли записи в таблице
+            result = await session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            count = result.scalar()
+            
+            if count > 0:
+                # Если есть записи, обновляем sequence
+                await session.execute(
+                    text(f"SELECT setval('{table}_id_seq', (SELECT MAX(id) FROM {table}))")
+                )
+                print(f"✅ Sequence для {table} обновлен")
+            else:
+                # Если таблица пустая, сбрасываем sequence в 1
+                await session.execute(text(f"SELECT setval('{table}_id_seq', 1, false)"))
+                print(f"✅ Sequence для {table} сброшен")
+        
+        await session.commit()
+        print("✅ Все sequences обновлены")
+        
+    except Exception as e:
+        print(f"⚠️ Ошибка при обновлении sequences: {e}")
+        await session.rollback()

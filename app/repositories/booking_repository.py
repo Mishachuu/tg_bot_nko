@@ -1,62 +1,47 @@
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from app.db.tables import bookings_table
-
+from app.models.booking import Booking
+from datetime import datetime
 
 class BookingRepository:
-    def __init__(self, table=bookings_table):
-        self.table = table
+    def __init__(self):
+        self.model = Booking
 
-    async def add_booking(self, session, booking_data: dict):
-        """Создаёт новую бронь"""
-        query = self.table.insert().values(**booking_data).returning(self.table)
-        result = await session.execute(query)
+    async def create(self, session: AsyncSession, booking_data: dict) -> Booking:
+        booking = Booking(**booking_data)
+        session.add(booking)
         await session.commit()
-        return result.scalar_one()
+        await session.refresh(booking)
+        return booking
 
-    async def get_all(self, session):
-        """Возвращает все бронирования"""
-        query = select(self.table)
-        result = await session.execute(query)
-        return [dict(row._mapping) for row in result]
+    async def get_by_id(self, session: AsyncSession, booking_id: int) -> Booking | None:
+        stmt = select(self.model).where(self.model.id == booking_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_user_id(self, session: AsyncSession, user_id: int):
+        stmt = select(self.model).where(self.model.user_id == user_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_by_equipment_id(self, session: AsyncSession, equipment_id: int):
+        stmt = select(self.model).where(self.model.equipment_id == equipment_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
     
-    async def get_by_user_id(self, session, user_id):
-        query = select(self.table).where(self.table.c.user_id == user_id)
-        result = await session.execute(query)
-        return [dict(row._mapping) for row in result]
-
-
-    async def get_by_equipment_id(self, session, equipment_id: int):
-        """Возвращает брони по ID оборудования"""
-        query = select(self.table).where(self.table.c.equipment_id == equipment_id)
-        result = await session.execute(query)
-        return [dict(row._mapping) for row in result]
-
-
-    #===== Всё что ниже по идее нужно перенести в Service 
-    async def find_conflicting(self, session, equipment_id: int, date_from, date_to):
-        """
-        Проверяет, есть ли пересечение бронирования по датам.
-        Возвращает список конфликтующих броней.
-        """
-        query = select(self.table).where(
+    async def get_overlapping_bookings(self, session: AsyncSession, equipment_id: int, date_from: datetime, date_to: datetime):
+        """Найти пересекающиеся бронирования"""
+        stmt = select(self.model).where(
             and_(
-                self.table.c.equipment_id == equipment_id,
-                # Пересечение по диапазону дат
-                self.table.c.date_from <= date_to,
-                self.table.c.date_to >= date_from,
+                self.model.equipment_id == equipment_id,
+                self.model.date_from <= date_to,
+                self.model.date_to >= date_from
             )
         )
-        result = await session.execute(query)
-        return [dict(row._mapping) for row in result]
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
-    async def get_overlapping_bookings(self, session, equipment_id, date_from, date_to):
-        query = (
-            select(self.table)
-            .where(
-                self.table.c.equipment_id == equipment_id,
-                self.table.c.date_from <= date_to,
-                self.table.c.date_to >= date_from,
-            )
-        )
-        result = await session.execute(query)
-        return result.mappings().all()
+    async def find_conflicting(self, session: AsyncSession, equipment_id: int, date_from: datetime, date_to: datetime):
+        """Найти конфликтующие бронирования (алиас для get_overlapping_bookings)"""
+        return await self.get_overlapping_bookings(session, equipment_id, date_from, date_to)
+        

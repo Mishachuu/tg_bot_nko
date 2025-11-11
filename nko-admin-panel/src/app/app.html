@@ -1,0 +1,41 @@
+<div class="admin-container">
+  <mat-sidenav-container class="sidenav-container">
+    <mat-sidenav #sidenav mode="side" opened class="sidenav">
+      <div class="sidebar-header">
+        <h2>NKO Admin</h2>
+      </div>
+      
+      <mat-nav-list>
+        <mat-list-item 
+          *ngFor="let item of menuItems" 
+          [routerLink]="item.route" 
+          routerLinkActive="active"
+          (click)="sidenav.close()">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.title }}</span>
+        </mat-list-item>
+        
+        <mat-list-item 
+          routerLink="/equipment" 
+          routerLinkActive="active"
+          (click)="sidenav.close()">
+          <mat-icon matListItemIcon>construction</mat-icon>
+          <span matListItemTitle>Оборудование</span>
+        </mat-list-item>
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="content">
+      <mat-toolbar color="primary" class="toolbar">
+        <button mat-icon-button (click)="sidenav.toggle()" class="menu-button">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <span class="toolbar-title">{{ currentTitle }}</span>
+      </mat-toolbar>
+
+      <div class="main-content">
+        <router-outlet></router-outlet>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Iterable, Sequence
 from datetime import datetime
 
-from sqlalchemy import insert, select, update as sql_update, delete as sql_delete
+from sqlalchemy import insert, select, update as sql_update, delete as sql_delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.engine import Result
 from sqlalchemy.sql import Select, Update, Delete, Insert
@@ -13,6 +13,7 @@ from math import radians, cos, sin, asin, sqrt
 from sqlalchemy import func
 from app.helpers.gis_helper import calculate_distance
 from app.models.equipment import Equipment
+from typing import List, Optional
 
 
 class EquipmentRepository:
@@ -27,37 +28,37 @@ class EquipmentRepository:
         """
         Создает запись и возвращает созданную сущность с новым ID.
         """
-        session.add(Equipment)
+        session.add(equipment)
         await session.commit()
-        await session.refresh(Equipment)
-        return Equipment
+        await session.refresh(equipment)
+        return equipment
     
-    async def get_all(self, session: AsyncSession):
+    async def get_all(self, session: AsyncSession, limit: int = 100, offset: int = 0):
         """Return:  List[Equipment]"""
-        stmt = select(self.model)
+        stmt = select(self.model).limit(limit).offset(offset)
         result = await session.execute(stmt)
-        return result.scalars().all() 
+        return result.scalars().all()
 
     async def get_by_id(self, session: AsyncSession, equipment_id: int) -> Equipment | None:
-        # 1) Получаем объект
         res = await session.execute(select(self.model).where(self.model.id == equipment_id))
         equipment = res.scalars().one_or_none()
-        if equipment is None:
-            return None
+        return equipment 
 
     async def get_by_user_id(self, session: AsyncSession, user_id: int):
-        # 1) Получаем объект
         res = await session.execute(select(self.model).where(self.model.user_id == user_id))
         equipment = res.scalars().all()
-        if equipment is None:
-            return None
+        return equipment
         
-    async def get_by_category_id(self, session: AsyncSession, category_id: int):
-        # 1) Получаем объект
-        res = await session.execute(select(self.model).where(self.model.category_id == category_id))
-        equipment = res.scalars().all()
-        if equipment is None:
-            return None 
+    async def get_by_category_id(self, session: AsyncSession, category_id: int, limit: int = 100, offset: int = 0):
+        """Получить оборудование по категории"""
+        stmt = (
+            select(self.model)
+            .where(self.model.category_id == category_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
     async def update(self, session: AsyncSession, equipment_id: int, changes: dict) -> Equipment | None:
         """
@@ -136,7 +137,6 @@ class EquipmentRepository:
         rows = res.fetchall()
         return [self._row_to_entity(r) for r in rows]
 
-    # === а это вынести в Service и так же переписать
     async def get_by_category_and_location(
         self,
         session: AsyncSession,
@@ -153,20 +153,19 @@ class EquipmentRepository:
         """
         print(f"🔍 ПОИСК: категория={category_id}, локация=({latitude}, {longitude}), радиус={radius_km}км")
         
-        # Сначала получаем все оборудование категории
+        # Сначала получаем все оборудование категории с помощью ORM
         stmt = (
-            select(self._t)
-            .where(self._t.c.category_id == category_id)
-            .where(self._t.c.is_approved == True)
-            .where(self._t.c.latitude.isnot(None))
-            .where(self._t.c.longitude.isnot(None))
+            select(self.model)
+            .where(self.model.category_id == category_id)
+            .where(self.model.is_approved == True)
+            .where(self.model.latitude.isnot(None))
+            .where(self.model.longitude.isnot(None))
         )
         
         print(f"SQL запрос: {stmt}")
         
-        res: Result = await session.execute(stmt)
-        rows = res.fetchall()
-        all_equipment = [self._row_to_entity(r) for r in rows]
+        result = await session.execute(stmt)
+        all_equipment = result.scalars().all()
         
         print(f"📊 Всего оборудования в категории {category_id}: {len(all_equipment)}")
         
@@ -206,11 +205,94 @@ class EquipmentRepository:
         result = filtered_equipment[offset:offset + limit]
         print(f"📦 ФИНАЛЬНЫЙ результат после limit/offset: {len(result)} записей")
         return result
+    
+    async def list_by_owner(self, session: AsyncSession, owner_id: int, limit: int = 100, offset: int = 0):
+        """Получить оборудование по владельцу"""
+        stmt = (
+            select(self.model)
+            .where(self.model.user_id == owner_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().all()
+        return res.scalars().all()
 
-        """
-        Удаляет запись. Возвращает True, если что-то удалили.
-        """
-        stmt: Delete = sql_delete(self._t).where(self._t.c.id == equipment_id)
-        res = await session.execute(stmt)
-        # rowcount у async + Core может быть None у некоторых драйверов, но чаще OK
-        return (res.rowcount or 0) > 0
+    async def set_publish(self, session: AsyncSession, equipment_id: int, is_publish: bool):
+        res = await session.execute(select(self.model).where(self.model.id == equipment_id))
+        eq = res.scalars().one_or_none()
+        if not eq:
+            return None
+        eq.is_publish = bool(is_publish)
+        await session.flush()
+        await session.refresh(eq)
+        return eq
+    
+    async def get_total_count(self, session: AsyncSession) -> int:
+        """Получить общее количество записей"""
+        stmt = select(func.count(Equipment.id))
+        result = await session.execute(stmt)
+        return result.scalar()
+
+    async def get_by_approval_status(
+        self, 
+        session: AsyncSession, 
+        is_approved: bool,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[Equipment]:
+        """Получить по статусу одобрения"""
+        stmt = (
+            select(self.model)
+            .where(self.model.is_approved == is_approved)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_by_publish_status(
+        self, 
+        session: AsyncSession, 
+        is_publish: bool,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[Equipment]:
+        """Получить по статусу публикации"""
+        stmt = (
+            select(self.model)
+            .where(self.model.is_publish == is_publish)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def search(
+        self,
+        session: AsyncSession,
+        category_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        is_approved: Optional[bool] = None,
+        is_publish: Optional[bool] = None,
+        name: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[Equipment]:
+        """Расширенный поиск"""
+        stmt = select(self.model)
+        
+        if category_id is not None:
+            stmt = stmt.where(self.model.category_id == category_id)
+        if user_id is not None:
+            stmt = stmt.where(self.model.user_id == user_id)
+        if is_approved is not None:
+            stmt = stmt.where(self.model.is_approved == is_approved)
+        if is_publish is not None:
+            stmt = stmt.where(self.model.is_publish == is_publish)
+        if name:
+            stmt = stmt.where(self.model.name.ilike(f"%{name}%"))
+        
+        stmt = stmt.limit(limit).offset(offset)
+        result = await session.execute(stmt)
+        return result.scalars().all()

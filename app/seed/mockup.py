@@ -19,8 +19,7 @@ USERS = [
         tg_id=1,
         phone_number="+79383716517",
         email="petr@gmail.com",
-        publish=True,
-        city_id=2,
+        is_lessor=True,
         score=5,
     ),
     AppUser(
@@ -29,28 +28,25 @@ USERS = [
         tg_id=2,  # был дубликат 1 — сделал уникальным
         phone_number="+79383316517",
         email="vasily@gmail.com",
-        publish=True,
-        city_id=1,
+        is_lessor=True,
         score=4.9,
     ),
     AppUser(
         id=3,
         name="Иван",
         tg_id=3,
-        phone_number="+79383316517",
+        phone_number="+79383316587",
         email="Ivan@gmail.com",
-        publish=False,
-        city_id=1,
+        is_lessor=False,
         score=4.9,
     ),
     AppUser(
         id=4,
         name="Игнат",
         tg_id=4,
-        phone_number="+79383316517",
+        phone_number="+79383312517",
         email="Ignat@gmail.com",
-        publish=False,
-        city_id=2,
+        is_lessor=False,
         score=4.9,
     ),
     AppUser(
@@ -59,19 +55,17 @@ USERS = [
         tg_id=789235294,
         phone_number="+79093316515",
         email="matvey@gmail.com",
-        publish=True,
-        city_id=1,
+        is_lessor=True,
         score=1,
     ),
 ]
 
-
 # ---------- Категории ----------
 CATEGORIES = [
-    {"id": 1, "name": "звук", "is_accepted": True},
-    {"id": 2, "name": "свет", "is_accepted": True},
-    {"id": 3, "name": "мебель", "is_accepted": True},
-    {"id": 4, "name": "техника", "is_accepted": False},  # раньше был дубликат id=3
+    {"id": 1, "name": "звук"},
+    {"id": 2, "name": "свет"},
+    {"id": 3, "name": "мебель"},
+    {"id": 4, "name": "техника"},
 ]
 
 # ---------- Оборудование ----------
@@ -79,7 +73,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=1,
         name="Микшер Yamaha MG10XU",
-        city_id=1,
         user_id=USERS[0].id,
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
@@ -92,7 +85,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=2,
         name="Сабвуфер JBL PRX818XLF",
-        city_id=1,
         user_id=USERS[0].id,
         category_id=CATEGORIES[0]["id"],
         is_approved=False,
@@ -105,7 +97,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=3,
         name="Светодиодный прожектор Chauvet DJ SlimPAR 56",
-        city_id=2,
         user_id=USERS[1].id,
         category_id=CATEGORIES[1]["id"],
         is_approved=True,
@@ -118,7 +109,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=4,
         name="Стойка для микрофона K&M 210/9",
-        city_id=1,
         user_id=USERS[1].id,
         category_id=CATEGORIES[2]["id"],
         is_approved=True,
@@ -131,7 +121,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=5,
         name="LED панель Godox LEDP120C",
-        city_id=2,
         user_id=USERS[1].id,
         category_id=CATEGORIES[1]["id"],
         is_approved=False,
@@ -144,7 +133,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=6,
         name="Стул складной Икеа",
-        city_id=1,
         user_id=USERS[2].id,
         category_id=CATEGORIES[2]["id"],
         is_approved=True,
@@ -157,7 +145,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=7,
         name="DMX Controller 192",
-        city_id=2,
         user_id=USERS[2].id,
         category_id=CATEGORIES[1]["id"],
         is_approved=False,
@@ -170,7 +157,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=8,
         name="RCF ART 712-A (активная колонка)",
-        city_id=1,
         user_id=USERS[3].id,
         category_id=CATEGORIES[0]["id"],
         is_approved=True,
@@ -183,7 +169,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=9,
         name="Диван двухместный",
-        city_id=2,
         user_id=USERS[4].id,
         category_id=CATEGORIES[2]["id"],
         is_approved=False,
@@ -196,7 +181,6 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=10,
         name="Световая стойка с диммером",
-        city_id=1,
         user_id=USERS[4].id,
         category_id=CATEGORIES[1]["id"],
         is_approved=True,
@@ -236,9 +220,4 @@ MOCK_BOOKINGS = [
         "date_from": datetime(2025, 1, 20),
         "date_to": datetime(2025, 1, 22),
     },
-]
-
-MOCK_CITY = [
-    {"id": 1, "name": "Самара"},
-    {"id": 2, "name": "Москва"},
 ]

@@ -206,3 +206,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Angular node_modules
+nko-admin-panel/node_modules/
+nko-admin-panel/.angular/
+nko-admin-panel/dist/
+nko-admin-panel/.vscode/

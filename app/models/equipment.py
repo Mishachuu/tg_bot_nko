@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
-@dataclass
 class Equipment(Base):
     __tablename__ = "equipments"
     """
@@ -14,7 +12,6 @@ class Equipment(Base):
     """
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=True)
-    city_id: Mapped[int] = mapped_column(nullable=True)
     user_id: Mapped[int] = mapped_column(nullable=False)
     category_id: Mapped[int] = mapped_column(nullable=True)
     is_approved: Mapped[bool] = mapped_column(default=False)
@@ -25,14 +22,20 @@ class Equipment(Base):
     latitude: Mapped[float] = mapped_column(nullable=True)
     longitude: Mapped[float] = mapped_column(nullable=True)
 
+    @property
+    def display_status(self) -> str:
+        if not self.is_approved:
+            return "На модерации"
+        return "Активно" if self.is_publish else "Скрыто"
+
     def to_dict(self) -> dict:
         return {
+            "id": self.id,
             "name": self.name,
-            "city_id": self.city_id,
             "user_id": self.user_id,
-            "status": self.status.value,
             "category_id": self.category_id,
             "is_approved": self.is_approved,
+            "is_publish": self.is_publish,
             "description": self.description,
             "quantity": self.quantity,
             "created_at": self.created_at,
