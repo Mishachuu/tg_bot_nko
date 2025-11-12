@@ -21,6 +21,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Загрузка токена бота
+load_dotenv("app/.env")
+token = os.getenv('TOKEN')
+if not token:
+    logger.error("❌ Не найден TOKEN бота.")
+application = Application.builder().token(token).build()
+
 async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_review, equipment_photo_repo):
     """Основная функция запуска бота с новой модульной архитектурой"""
     
@@ -32,12 +39,6 @@ async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_revi
     review_service = ReviewService(repo_review)
     equipment_photo_service = EquipmentPhotoService(equipment_photo_repo)
 
-    # Загрузка токена бота
-    load_dotenv("app/.env")
-    token = os.getenv('TOKEN')
-    if not token:
-        logger.error("❌ Не найден TOKEN бота.")
-        return
 
     # Создаем главный роутер вместо отдельных ботов
     bot_router = BotRouter(
@@ -48,9 +49,6 @@ async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_revi
         category_service=category_service,
         equipment_photo_service = equipment_photo_service
     )
-
-    # Создаем приложение
-    application = Application.builder().token(token).build()
 
     # Регистрируем ВСЕ обработчики через роутер
     for handler in bot_router.get_handlers():
