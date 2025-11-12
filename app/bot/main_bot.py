@@ -593,13 +593,13 @@ class MainBot:
                 # Формируем сообщение об успехе
                 message = (
                     "✅ Оборудование успешно создано и отправлено на модерацию!\n\n"
-                    f"📦 *{data['name']}*\n"
-                    f"📝 {data['description']}\n"
-                    f"📂 Категория: {data['category_name']}\n"
-                    f"📊 Количество: {data['quantity']} шт.\n"
-                    f"📍 Локация: {'указана' if data.get('latitude') else 'не указана'}\n"
-                    f"📸 Фото: {len(data.get('photos', []))} шт.\n\n"
-                    f"🆔 ID оборудования: {created_equipment.id}\n"
+                    f"*{data['name']}*\n"
+                    f"{data['description']}\n"
+                    f"Категория: {data['category_name']}\n"
+                    f"Количество: {data['quantity']} шт.\n"
+                    f"📍Локация: {'указана' if data.get('latitude') else 'не указана'}\n"
+                    f"Фото: {len(data.get('photos', []))} шт.\n\n"
+                    f"ID оборудования: {created_equipment.id}\n"
                     "⏳ Статус: 🟡 На модерации"
                 )
                 
