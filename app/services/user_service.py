@@ -7,7 +7,7 @@ class UserService:
     def __init__(self, repo_user: UserRepository):
         self.repo_user = repo_user
 
-    async def get_user_profile(self, session:AsyncSession, tg_id):
+    async def get_user_profile(self, session:AsyncSession, tg_id) -> AppUser:
         user = await self.repo_user.get_by_tgId(session, tg_id)
         return user
     
