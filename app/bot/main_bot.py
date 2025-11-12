@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InputFile, InputMediaPhoto
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from app.db.session import AsyncSessionLocal
 from app.models.equipment import Equipment
@@ -89,13 +89,14 @@ class MainBot:
 
     async def _handle_registration(self, update: Update, user_id: int, message_text: str):
         """Обработка процесса регистрации"""
+        message = update.message or update.callback_query.message
         if user_id not in self.user_states:
             # Начинаем регистрацию
             self.user_states[user_id] = {
                 "state": self.REGISTRATION_STATES["WAITING_FOR_NAME"],
                 "data": {}
             }
-            await update.message.reply_text(
+            await message.reply_text(
                 "👋 Добро пожаловать! Для начала работы нужно зарегистрироваться.\n"
                 "Введите ваше имя:",
                 reply_markup=ReplyKeyboardRemove()
@@ -110,7 +111,7 @@ class MainBot:
             self.user_states[user_id]["state"] = self.REGISTRATION_STATES["WAITING_FOR_PHONE"]
             
             phone_keyboard = [[KeyboardButton("📱 Отправить телефон", request_contact=True)]]
-            await update.message.reply_text(
+            await message.reply_text(
                 "📞 Отправьте ваш номер телефона:",
                 reply_markup=ReplyKeyboardMarkup(phone_keyboard, resize_keyboard=True)
             )
@@ -118,7 +119,7 @@ class MainBot:
         elif state == self.REGISTRATION_STATES["WAITING_FOR_PHONE"]:
             data["phone"] = message_text
             self.user_states[user_id]["state"] = self.REGISTRATION_STATES["WAITING_FOR_EMAIL"]
-            await update.message.reply_text("📧 Введите ваш email (или 'пропустить'):")
+            await message.reply_text("📧 Введите ваш email (или 'пропустить'):")
             
         elif state == self.REGISTRATION_STATES["WAITING_FOR_EMAIL"]:
             if message_text.lower() != 'пропустить':
@@ -748,8 +749,7 @@ class MainBot:
     async def _show_main_menu(self, update: Update, user_id: int, message: str = ""):
         """Показывает главное меню"""
         async with AsyncSessionLocal() as session:
-            user = await self.user_service.get_user_profile(session, user_id)
-            
+            user : AppUser = await self.user_service.get_user_profile(session, user_id)
         if user.is_lessor:
             menu_buttons = [
                 ["🔍 Найти оборудование"],
@@ -805,7 +805,56 @@ class MainBot:
         if is_registered:
             await self._show_main_menu(update, user_id, "С возвращением!")
         else:
-            await self._handle_registration(update, user_id, "")
+            await self._show_personal_data_consent(update, user_id)
+
+    async def _show_personal_data_consent(self, update: Update, user_id: int):
+        """Показать согласие на обработку персональных данных"""
+        text = self.formatter.personal_data_consent
+
+        keyboard = [[InlineKeyboardButton("✅ Согласен", callback_data="consent_personal_data")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        message = update.message or update.callback_query.message
+        await message.reply_text(
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+    async def _show_risk_warning(self, update: Update, user_id: int):
+        """Показать предупреждение о рисках"""
+        text =  self.formatter.risk_warning
+        keyboard = [[InlineKeyboardButton("✅ Подтверждаю", callback_data="consent_risk_warning")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        message = update.message or update.callback_query.message
+        await message.reply_text(
+
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+    async def handle_personal_data_consent(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик согласия на обработку персональных данных"""
+        query = update.callback_query
+        user_id = query.from_user.id
+        
+        await query.answer()
+        await query.edit_message_reply_markup(reply_markup=None)  # Убираем кнопку
+        
+        # Показываем второе согласие
+        await self._show_risk_warning(update, user_id)
+
+    async def handle_risk_warning_consent(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик подтверждения предупреждения о рисках"""
+        query = update.callback_query
+        
+        
+        await query.answer()
+        await query.edit_message_reply_markup(reply_markup=None)  # Убираем кнопку
+        
+        # Переходим к регистрации 
+        await self._handle_registration(update, update.effective_user.id , "Соглашеия подтверждены!\n Добро пожаловать!")
+
 
     def get_handlers(self):
         return [
@@ -815,4 +864,6 @@ class MainBot:
             MessageHandler(filters.CONTACT, self.handle_contact),
             CallbackQueryHandler(self.handle_callback, pattern=r"^(book_|ask_)"),
             MessageHandler(filters.PHOTO & ~filters.COMMAND, self.handle_equipment_photo),
+            CallbackQueryHandler(self.handle_personal_data_consent, pattern="^consent_personal_data$"),
+            CallbackQueryHandler(self.handle_risk_warning_consent, pattern="^consent_risk_warning$")
         ]
