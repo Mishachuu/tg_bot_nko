@@ -11,9 +11,16 @@ from app.services.user_service import UserService
 from app.services.category_service import CategoryService
 from app.services.review_service import ReviewService
 from app.services.equipment_photo_service import EquipmentPhotoService
-
+from app.services.notification_service import NotificationService
 # Новая модульная архитектура бота
 from app.bot.router import BotRouter
+from telegram.ext import Application
+from dotenv import load_dotenv
+
+load_dotenv("app/.env")
+token = os.getenv('TOKEN')
+# Создаем приложение
+application = Application.builder().token(token).build()
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -23,7 +30,9 @@ logger = logging.getLogger(__name__)
 
 async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_review, equipment_photo_repo):
     """Основная функция запуска бота с новой модульной архитектурой"""
-    
+        # Загрузка токена бота
+    notification_service = NotificationService(application)
+
     # Инициализация сервисов с переданными репозиториями
     booking_service = BookingService(booking_repo)
     equipment_service = EquipmentService(repo_equipment, booking_service)
@@ -31,13 +40,6 @@ async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_revi
     category_service = CategoryService(repo_category)
     review_service = ReviewService(repo_review)
     equipment_photo_service = EquipmentPhotoService(equipment_photo_repo)
-
-    # Загрузка токена бота
-    load_dotenv("app/.env")
-    token = os.getenv('TOKEN')
-    if not token:
-        logger.error("❌ Не найден TOKEN бота.")
-        return
 
     # Создаем главный роутер вместо отдельных ботов
     bot_router = BotRouter(
@@ -49,8 +51,6 @@ async def main(booking_repo, repo_equipment, repo_user, repo_category, repo_revi
         equipment_photo_service = equipment_photo_service
     )
 
-    # Создаем приложение
-    application = Application.builder().token(token).build()
 
     # Регистрируем ВСЕ обработчики через роутер
     for handler in bot_router.get_handlers():

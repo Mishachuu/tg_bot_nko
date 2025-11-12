@@ -10,6 +10,9 @@ from app.api.schemas.user_schema import (
 )
 from app.services.user_service import UserService
 
+from app.cli.bot_main import application
+from app.services.notification_service import NotificationService
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 # СУЩЕСТВУЮЩИЕ ЭНДПОИНТЫ
@@ -135,6 +138,11 @@ async def update_lessor_status(
     user = await user_service.set_lessor_status(session, user_id, status_data.is_lessor)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if(user.is_lessor):
+        text = "🟢Ваш статус Арендатора подтвержден \n\nТеперь Вы можете публиковать оборудования"
+    else:
+        text = "⚠️Вы были лишены прав Арендатора. \n\nТеперь Вы можете НЕ публиковать оборудования" 
+    await NotificationService(application).notify_user(user.tg_id, text)
     return user
 
 @router.get("/search/name", response_model=List[UserResponse])
