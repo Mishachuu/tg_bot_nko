@@ -89,6 +89,9 @@ class MainBot:
 
     async def _handle_registration(self, update: Update, user_id: int, message_text: str):
         """Обработка процесса регистрации"""
+        #if(self.user_states[user_id]["data"]["personal_data"] == False or self.user_states[user_id]["data"]["risk"] == False ):
+        #    self.handle_personal_data_consent(update, context)
+        #    return
         message = update.message or update.callback_query.message
         if user_id not in self.user_states:
             # Начинаем регистрацию
@@ -837,7 +840,7 @@ class MainBot:
         """Обработчик согласия на обработку персональных данных"""
         query = update.callback_query
         user_id = query.from_user.id
-        
+        #self.user_states[user_id]["data"]["personal_data"] = True
         await query.answer()
         await query.edit_message_reply_markup(reply_markup=None)  # Убираем кнопку
         
@@ -848,7 +851,7 @@ class MainBot:
         """Обработчик подтверждения предупреждения о рисках"""
         query = update.callback_query
         
-        
+        #self.user_states[query.from_user.id]["data"]["risk"] = True
         await query.answer()
         await query.edit_message_reply_markup(reply_markup=None)  # Убираем кнопку
         
