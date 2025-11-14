@@ -430,7 +430,7 @@ class MainBot:
             user = await self.user_service.get_user_profile(session, user_id)
             
         if not user.is_lessor:
-            await update.message.reply_text("❌ У вас нет оборудования.")
+            await update.message.reply_text("❌ Вы не Арентодатель.")
             return
             
         async with AsyncSessionLocal() as session:
@@ -449,7 +449,8 @@ class MainBot:
             
             # Создаем карточку оборудования
             category_name = await self._get_category_name(session, equipment.category_id)
-            card_text = self.formatter.create_equipment_card(
+
+            card_text = self.formatter.create_my_equipment_card(
                 equipment, 
                 f"Вы (ID: {user.id})", # нах нам тут user.id ? 
                 category_name
