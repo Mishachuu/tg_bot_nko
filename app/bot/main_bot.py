@@ -47,6 +47,12 @@ class MainBot:
             "ADD_LOCATION": "add_equipment_location",
             "ADD_PHOTOS": "add_equipment_photos"
         }
+        
+        self.BOOKING_STATES = {
+            "ENTERING_DATE_FROM": "booking_entering_date_from",
+            "ENTERING_DATE_TO": "booking_entering_date_to",
+            "ENTERING_QUANTITY": "booking_entering_quantity",
+        }
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Главный обработчик всех сообщений"""
@@ -167,6 +173,11 @@ class MainBot:
         # Обработка выбора категории для оборудования
         elif state == self.EQUIPMENT_STATES["CHOOSING_CATEGORY"]:
             await self._handle_category_selection(update, user_id, message_text, data)
+            
+        elif state in [self.BOOKING_STATES["ENTERING_DATE_FROM"],
+                       self.BOOKING_STATES["ENTERING_DATE_TO"],
+                       self.BOOKING_STATES["ENTERING_QUANTITY"]]:
+            await self._handle_booking_flow(update, context, user_id, message_text, state, data)
             
         else:
             await update.message.reply_text("Не понял команду. Используйте кнопки меню.")
