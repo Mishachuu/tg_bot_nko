@@ -6,17 +6,30 @@ class EquipmentCardFormatter:
     """Форматирует карточки оборудования для Telegram"""
     
     @classmethod
-    def create_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно", category: str = "Не указано") -> str:
-        """Создает форматированную карточку оборудования"""
-        
+    def create_equipment_card(
+        cls,
+        equipment,
+        landlord_name: str = "Неизвестно",
+        category: str = "Не указано",
+        available_quantity: int | None = None
+    ) -> str:
+        """
+        Создает форматированную карточку оборудования.
+        available_quantity — свободное количество на выбранные даты (если передано)
+        """
+
         card_lines = [
             f"*{equipment.name or 'Без названия'}*",
             f"Описание: {equipment.description or 'Нет описания'}",
-            f"Количество: {equipment.quantity} шт.",
             f"Категория: {category}",
-            f"Арендодатель: {landlord_name}"
+            f"Арендодатель: {landlord_name}",
+            f"Всего доступно: {equipment.quantity} шт."
         ]
-        
+
+        # Добавляем свободное количество, если передано
+        if available_quantity is not None:
+            card_lines.append(f"📦 Свободно на выбранные даты: *{available_quantity} шт.*")
+
         return "\n".join(card_lines)
     personal_data_consent = """🔐 *Согласие на обработку персональных данных*
 
