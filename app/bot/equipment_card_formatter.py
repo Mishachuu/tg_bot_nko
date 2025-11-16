@@ -1,6 +1,6 @@
 from typing import Dict
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.models.equipment import  Equipment
+from app.models.equipment import  Equipment, EquipmentStatus
 
 class EquipmentCardFormatter:
     """Форматирует карточки оборудования для Telegram"""
@@ -22,8 +22,10 @@ class EquipmentCardFormatter:
     @classmethod
     def create_my_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно", category: str = "Не указано") -> str:
         """Создает форматированную карточку оборудования"""
-        if(equipment.is_approved):
+        if(equipment.status == EquipmentStatus.APPROVED):
             moderation_text = "Модерация: Пройдена🟢"
+        elif(equipment.status == EquipmentStatus.REJECTED):
+            moderation_text = "Модерация: НЕ пройдена🔴"
         else:
             moderation_text = "Модерация: Ожидайте ⏳"
 
