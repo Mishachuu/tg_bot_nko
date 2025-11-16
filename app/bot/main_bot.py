@@ -201,6 +201,15 @@ class MainBot:
         user_id: int,
         message_text: str,
     ):
+        if message_text == "🔁 Повторить ввод":
+            await self._repeat_last_question(update, user_id)
+            return
+
+        if message_text == "↩️ В меню":
+            self.user_states.pop(user_id, None)
+            await self._show_main_menu(update, user_id)
+            return
+        
         """Обработка различных состояний"""
         if user_id not in self.user_states:
             await update.message.reply_text(
@@ -450,6 +459,7 @@ class MainBot:
                         radius_km,
                     )
                 )
+                eqs = [eq for eq in eqs if eq.user_id != current_user.id]
                 available_equipment.extend(eqs)
 
             if not available_equipment:
@@ -1005,48 +1015,65 @@ class MainBot:
         """Обработка шагов диалога бронирования"""
         message = update.message
 
-        # Шаг 1 — ввод даты начала
+        # --- Универсальная защита: если даты уже есть, но перепутаны ---
+        if "date_from" in data and "date_to" in data:
+            if data["date_to"] < data["date_from"]:
+                await message.reply_text(
+                    "❌ Ошибка: дата окончания раньше даты начала.\n\n"
+                    "Введите дату начала аренды (ДД.ММ.ГГГГ):",
+                    reply_markup=self._back_to_menu_keyboard(),
+                )
+                # сбрасываем даты, чтобы начать заново
+                data.pop("date_from", None)
+                data.pop("date_to", None)
+                self.user_states[user_id]["state"] = self.BOOKING_STATES["ENTERING_DATE_FROM"]
+                return
+
+        # ===========================
+        # Шаг 1 — дата начала
+        # ===========================
         if state == self.BOOKING_STATES["ENTERING_DATE_FROM"]:
             try:
                 date_from = datetime.strptime(message_text, "%d.%m.%Y")
             except ValueError:
                 await message.reply_text(
-                    "❌ Неверный формат даты. Введите в формате ДД.ММ.ГГГГ."
+                    "❌ Неверный формат.\nВведите дату в формате ДД.ММ.ГГГГ.",
+                    reply_markup=self._retry_keyboard(),
                 )
                 return
 
             data["date_from"] = date_from
-            self.user_states[user_id]["state"] = self.BOOKING_STATES[
-                "ENTERING_DATE_TO"
-            ]
+            self.user_states[user_id]["state"] = self.BOOKING_STATES["ENTERING_DATE_TO"]
             await message.reply_text(
-                "📅 Теперь введите дату окончания аренды (ДД.ММ.ГГГГ):"
+                "📅 Теперь введите дату окончания аренды (ДД.ММ.ГГГГ):",
+                reply_markup=self._back_to_menu_keyboard(),
             )
             return
 
-        # Шаг 2 — ввод даты окончания
+        # ===========================
+        # Шаг 2 — дата окончания
+        # ===========================
         if state == self.BOOKING_STATES["ENTERING_DATE_TO"]:
             try:
                 date_to = datetime.strptime(message_text, "%d.%m.%Y")
             except ValueError:
                 await message.reply_text(
-                    "❌ Неверный формат даты. Введите в формате ДД.ММ.ГГГГ."
+                    "❌ Неверный формат.\nВведите дату в формате ДД.ММ.ГГГГ.",
+                    reply_markup=self._retry_keyboard(),
                 )
                 return
 
             if date_to < data["date_from"]:
                 await message.reply_text(
-                    "❌ Дата окончания раньше даты начала. Попробуйте ещё раз."
+                    "❌ Дата окончания раньше даты начала.\nПопробуйте снова.",
+                    reply_markup=self._retry_keyboard(),
                 )
                 return
 
             data["date_to"] = date_to
 
+            # вычисляем свободное количество
             async with AsyncSessionLocal() as session:
-                equipment = await self.equipment_service.get_equipment(
-                    session, data["equipment_id"]
-                )
-
                 available_qty = await self.booking_service.get_available_quantity(
                     session,
                     data["equipment_id"],
@@ -1057,12 +1084,13 @@ class MainBot:
             self.user_states[user_id]["state"] = self.BOOKING_STATES["ENTERING_QUANTITY"]
             await message.reply_text(
                 f"📦 Введите количество единиц (свободно: {available_qty}):",
-                reply_markup=ReplyKeyboardRemove(),
+                reply_markup=self._back_to_menu_keyboard(),
             )
-            
             return
 
-        # Шаг 3 — ввод количества
+        # ===========================
+        # Шаг 3 — количество
+        # ===========================
         if state == self.BOOKING_STATES["ENTERING_QUANTITY"]:
             try:
                 qty = int(message_text)
@@ -1070,16 +1098,15 @@ class MainBot:
                     raise ValueError
             except ValueError:
                 await message.reply_text(
-                    "❌ Введите корректное число (> 0)."
+                    "❌ Введите корректное число (> 0).",
+                    reply_markup=self._retry_keyboard(),
                 )
                 return
 
             data["quantity"] = qty
 
             async with AsyncSessionLocal() as session:
-                renter = await self.user_service.get_user_profile(
-                    session, user_id
-                )
+                renter = await self.user_service.get_user_profile(session, user_id)
                 try:
                     booking = await self.booking_service.create_booking(
                         session,
@@ -1092,20 +1119,19 @@ class MainBot:
                 except ValueError as e:
                     await message.reply_text(
                         f"❌ Не удалось создать бронь: {e}",
-                        reply_markup=self._back_to_menu_keyboard()
+                        reply_markup=self._back_to_menu_keyboard(),
                     )
                     self.user_states.pop(user_id, None)
                     return
 
-                await self._notify_owner_about_booking(
-                    context, session, booking, renter
-                )
+                await self._notify_owner_about_booking(context, session, booking, renter)
 
             await message.reply_text(
                 "✅ Заявка на бронирование отправлена арендодателю. Ожидайте подтверждения.",
-                reply_markup=self._back_to_menu_keyboard()
+                reply_markup=self._back_to_menu_keyboard(),
             )
             self.user_states.pop(user_id, None)
+
 
     async def _notify_owner_about_booking(
         self, context, session, booking, renter: AppUser
@@ -1411,4 +1437,64 @@ class MainBot:
             [["⬅️ В главное меню"]],
             resize_keyboard=True
         )
+        
+    def _retry_keyboard(self):
+        return ReplyKeyboardMarkup(
+            [["🔁 Повторить ввод"], ["↩️ В меню"]],
+            resize_keyboard=True
+        )
+        
+    async def _repeat_last_question(self, update: Update, user_id: int):
+        """Повторяет последний вопрос в зависимости от активного состояния."""
+        if user_id not in self.user_states:
+            await update.message.reply_text("Не понял. Возвращаю в меню.")
+            await self._show_main_menu(update, user_id)
+            return
+
+        state = self.user_states[user_id]["state"]
+
+        # Поиск
+        if state == self.SEARCH_STATES["ASKING_RADIUS"]:
+            await update.message.reply_text("📏 Укажите радиус поиска в км:")
+        elif state == self.SEARCH_STATES["CHOOSING_CATEGORIES"]:
+            await self._ask_categories(update, user_id, self.user_states[user_id]["data"]["selected_categories"])
+        elif state == self.SEARCH_STATES["ENTERING_DATE_FROM"]:
+            await update.message.reply_text("Введите дату начала аренды (ГГГГ.ММ.ДД):")
+        elif state == self.SEARCH_STATES["ENTERING_DATE_TO"]:
+            await update.message.reply_text("Введите дату окончания аренды (ГГГГ.ММ.ДД):")
+
+        # Бронирование
+        elif state == self.BOOKING_STATES["ENTERING_DATE_FROM"]:
+            await update.message.reply_text("📅 Введите дату начала аренды (ДД.ММ.ГГГГ):")
+        elif state == self.BOOKING_STATES["ENTERING_DATE_TO"]:
+            await update.message.reply_text("📅 Введите дату окончания аренды (ДД.ММ.ГГГГ):")
+        elif state == self.BOOKING_STATES["ENTERING_QUANTITY"]:
+            data = self.user_states[user_id]["data"]
+            async with AsyncSessionLocal() as session:
+                available_qty = await self.booking_service.get_available_quantity(
+                    session,
+                    data["equipment_id"],
+                    data["date_from"],
+                    data["date_to"]
+                )
+            await update.message.reply_text(f"📦 Введите количество единиц (свободно: {available_qty}):")
+
+        # Добавление оборудования
+        elif state == self.EQUIPMENT_STATES["ADD_NAME"]:
+            await update.message.reply_text("📝 Введите название оборудования:")
+        elif state == self.EQUIPMENT_STATES["ADD_DESCRIPTION"]:
+            await update.message.reply_text("✍️ Введите описание оборудования:")
+        elif state == self.EQUIPMENT_STATES["CHOOSING_CATEGORY"]:
+            await self._ask_categories_for_equipment(update, user_id)
+        elif state == self.EQUIPMENT_STATES["ADD_QUANTITY"]:
+            await update.message.reply_text("📦 Укажите количество оборудования:")
+        elif state == self.EQUIPMENT_STATES["ADD_LOCATION"]:
+            await update.message.reply_text("📍 Отправьте локацию:")
+        elif state == self.EQUIPMENT_STATES["ADD_PHOTOS"]:
+            await update.message.reply_text("📸 Отправьте фото или нажмите 'Готово':")
+
+        else:
+            await update.message.reply_text("Не понял. Возвращаю в меню.")
+            await self._show_main_menu(update, user_id)
+
 
