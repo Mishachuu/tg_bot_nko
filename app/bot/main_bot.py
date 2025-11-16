@@ -571,8 +571,6 @@ class MainBot:
                     quantity=data["quantity"],
                     latitude=data.get("latitude"),
                     longitude=data.get("longitude"),
-                    is_approved=False,  # На модерации
-                    is_publish=False,
                     created_at=datetime.now()  # Явно устанавливаем дату создания
                 )
                 

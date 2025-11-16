@@ -22,15 +22,6 @@ class EquipmentCardFormatter:
     @classmethod
     def create_my_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно", category: str = "Не указано") -> str:
         """Создает форматированную карточку оборудования"""
-        
-        # Конечно лучше сделать Enum, но я бы пока что сделал что у нас поле is_publish nullable и если значение None то оборудование на модерации ниже видно:
-        #if(equipment.is_approved is None):
-        #    moderation_text = "Модерация: Ожидайте ⏳"
-        #elif(equipment.is_approved):
-        #    moderation_text = "Модерация: Пройдена🟢"
-        #else:
-        #    moderation_text = "Модерация: Не пройдена🔴"
-
         if(equipment.is_approved):
             moderation_text = "Модерация: Пройдена🟢"
         else:

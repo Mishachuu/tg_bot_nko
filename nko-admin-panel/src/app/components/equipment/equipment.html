@@ -13,27 +13,15 @@
   <!-- Filters -->
   <mat-card class="filters-card">
     <div class="filters">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Поиск по названию</mat-label>
-        <input matInput [(ngModel)]="searchQuery" (keyup)="onSearch()" placeholder="Введите название...">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
 
+      <!-- Обновленный фильтр статуса модерации -->
       <mat-form-field appearance="outline">
-        <mat-label>Статус одобрения</mat-label>
-        <mat-select [(ngModel)]="approvalFilter" (selectionChange)="loadEquipment()">
+        <mat-label>Статус модерации</mat-label>
+        <mat-select [(ngModel)]="statusFilter" (selectionChange)="loadEquipment()">
           <mat-option value="">Все статусы</mat-option>
-          <mat-option value="true">Одобрено</mat-option>
-          <mat-option value="false">На модерации</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Статус публикации</mat-label>
-        <mat-select [(ngModel)]="publishFilter" (selectionChange)="loadEquipment()">
-          <mat-option value="">Все статусы</mat-option>
-          <mat-option value="true">Опубликовано</mat-option>
-          <mat-option value="false">Скрыто</mat-option>
+          <mat-option value="moderation">На модерации</mat-option>
+          <mat-option value="approved">Одобрено</mat-option>
+          <mat-option value="rejected">Отклонено</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -85,29 +73,13 @@
           </td>
         </ng-container>
 
-        <!-- Approval Status Column -->
-        <ng-container matColumnDef="is_approved">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Одобрение</th>
+        <!-- Статус -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Статус модерации</th>
           <td mat-cell *matCellDef="let equipment">
             <mat-chip-set>
-              <mat-chip 
-                [color]="equipment.is_approved ? 'primary' : 'warn'" 
-                (click)="toggleApprovalStatus(equipment)">
-                {{ equipment.is_approved ? '✅ Одобрено' : '⏳ На модерации' }}
-              </mat-chip>
-            </mat-chip-set>
-          </td>
-        </ng-container>
-
-        <!-- Publish Status Column -->
-        <ng-container matColumnDef="is_publish">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Публикация</th>
-          <td mat-cell *matCellDef="let equipment">
-            <mat-chip-set>
-              <mat-chip 
-                [color]="equipment.is_publish ? 'accent' : 'basic'" 
-                (click)="togglePublishStatus(equipment)">
-                {{ equipment.is_publish ? '🌐 Опубликовано' : '👁️ Скрыто' }}
+              <mat-chip [color]="getStatusColor(equipment.status)">
+                {{ getStatusDisplay(equipment.status) }}
               </mat-chip>
             </mat-chip-set>
           </td>
@@ -125,22 +97,32 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>Действия</th>
           <td mat-cell *matCellDef="let equipment">
-            <button mat-icon-button [matMenuTriggerFor]="menu">
+            <button mat-icon-button [matMenuTriggerFor]="menu" (click)="setCurrentEquipment(equipment)">
               <mat-icon>more_vert</mat-icon>
             </button>
             <mat-menu #menu="matMenu">
-              <button mat-menu-item (click)="editEquipment(equipment)">
-                <mat-icon>edit</mat-icon>
-                <span>Редактировать</span>
-              </button>
-              <button mat-menu-item (click)="viewEquipmentDetails(equipment)">
-                <mat-icon>visibility</mat-icon>
-                <span>Просмотр</span>
-              </button>
-              <button mat-menu-item (click)="deleteEquipment(equipment.id!)" class="delete-action">
-                <mat-icon color="warn">delete</mat-icon>
-                <span>Удалить</span>
-              </button>
+              <!-- Действия для модерации -->
+              <ng-container *ngIf="currentEquipment?.status === 'moderation'">
+                <button mat-menu-item (click)="approveCurrentEquipment()">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Одобрить</span>
+                </button>
+                <button mat-menu-item (click)="rejectCurrentEquipment()">
+                  <mat-icon>cancel</mat-icon>
+                  <span>Отклонить</span>
+                </button>
+              </ng-container>
+              
+              <ng-container *ngIf="currentEquipment?.status === 'rejected'">
+                <button mat-menu-item (click)="approveCurrentEquipment()">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Одобрить</span>
+                </button>
+                <button mat-menu-item (click)="showRejectionReason()">
+                  <mat-icon>info</mat-icon>
+                  <span>Просмотр причины</span>
+                </button>
+              </ng-container>
             </mat-menu>
           </td>
         </ng-container>
@@ -150,20 +132,16 @@
       </table>
 
       <!-- Loading State -->
-      @if (isLoading()) {
-        <div class="loading-container">
-          <mat-spinner diameter="40"></mat-spinner>
-          <p>Загрузка оборудования...</p>
-        </div>
-      }
+      <div *ngIf="isLoading()" class="loading-container">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Загрузка оборудования...</p>
+      </div>
 
       <!-- Empty State -->
-      @if (!isLoading() && dataSource.data.length === 0) {
-        <div class="empty-state">
-          <mat-icon>construction</mat-icon>
-          <p>Оборудование не найдено</p>
-        </div>
-      }
+      <div *ngIf="!isLoading() && dataSource.data.length === 0" class="empty-state">
+        <mat-icon>construction</mat-icon>
+        <p>Оборудование не найдено</p>
+      </div>
 
       <!-- Pagination -->
       <mat-paginator

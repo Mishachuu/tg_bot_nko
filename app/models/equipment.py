@@ -1,32 +1,43 @@
+from enum import Enum
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Enum as SQLEnum
 from app.db.base import Base
+
+class EquipmentStatus(Enum):
+    MODERATION = "moderation"    # На модерации
+    APPROVED = "approved"        # Одобрено
+    REJECTED = "rejected"       # Отклонено
 
 class Equipment(Base):
     __tablename__ = "equipments"
-    """
-    Atribute:
-        user_id (int): пользователь который разместил оборудование
-        is_approved (bool): Поле которые так же проставляет модерация/админ (!! В дальнейшем передеалть под Enum !!)
-        is_publish (bool): Если пользлватеоль удаляет объявление оно просто скрыватся но не удаляется удаилть объявление может только модератор/админ
-    """
+    
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=True)
     user_id: Mapped[int] = mapped_column(nullable=False)
     category_id: Mapped[int] = mapped_column(nullable=True)
-    is_approved: Mapped[bool] = mapped_column(default=False)
-    is_publish: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(
+        SQLEnum(EquipmentStatus), 
+        default=EquipmentStatus.MODERATION,
+        nullable=False
+    )
     description: Mapped[str] = mapped_column(nullable=True)
     quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(nullable=False)
     latitude: Mapped[float] = mapped_column(nullable=True)
     longitude: Mapped[float] = mapped_column(nullable=True)
+    rejection_reason: Mapped[str] = mapped_column(nullable=True)
+    moderated_at: Mapped[datetime] = mapped_column(nullable=True)
+    moderated_by: Mapped[int] = mapped_column(nullable=True)
 
     @property
     def display_status(self) -> str:
-        if not self.is_approved:
-            return "На модерации"
-        return "Активно" if self.is_publish else "Скрыто"
+        status_map = {
+            EquipmentStatus.MODERATION: "На модерации",
+            EquipmentStatus.APPROVED: "Одобрено", 
+            EquipmentStatus.REJECTED: "Отклонено",
+        }
+        return status_map.get(EquipmentStatus(self.status), "Неизвестно")
 
     def to_dict(self) -> dict:
         return {
@@ -34,11 +45,15 @@ class Equipment(Base):
             "name": self.name,
             "user_id": self.user_id,
             "category_id": self.category_id,
-            "is_approved": self.is_approved,
-            "is_publish": self.is_publish,
+            "status": self.status.value,
+            "display_status": self.display_status,
             "description": self.description,
             "quantity": self.quantity,
             "created_at": self.created_at,
             "latitude": self.latitude,
             "longitude": self.longitude,
+            "rejection_reason": self.rejection_reason,
+            "moderated_at": self.moderated_at,
+            "moderated_by": self.moderated_by,
+            "is_visible": self.is_visible,
         }

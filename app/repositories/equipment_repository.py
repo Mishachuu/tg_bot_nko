@@ -216,17 +216,6 @@ class EquipmentRepository:
         )
         result = await session.execute(stmt)
         return result.scalars().all()
-        return res.scalars().all()
-
-    async def set_publish(self, session: AsyncSession, equipment_id: int, is_publish: bool):
-        res = await session.execute(select(self.model).where(self.model.id == equipment_id))
-        eq = res.scalars().one_or_none()
-        if not eq:
-            return None
-        eq.is_publish = bool(is_publish)
-        await session.flush()
-        await session.refresh(eq)
-        return eq
     
     async def get_total_count(self, session: AsyncSession) -> int:
         """Получить общее количество записей"""
@@ -251,30 +240,12 @@ class EquipmentRepository:
         result = await session.execute(stmt)
         return result.scalars().all()
 
-    async def get_by_publish_status(
-        self, 
-        session: AsyncSession, 
-        is_publish: bool,
-        limit: int = 100,
-        offset: int = 0
-    ) -> List[Equipment]:
-        """Получить по статусу публикации"""
-        stmt = (
-            select(self.model)
-            .where(self.model.is_publish == is_publish)
-            .limit(limit)
-            .offset(offset)
-        )
-        result = await session.execute(stmt)
-        return result.scalars().all()
-
     async def search(
         self,
         session: AsyncSession,
         category_id: Optional[int] = None,
         user_id: Optional[int] = None,
         is_approved: Optional[bool] = None,
-        is_publish: Optional[bool] = None,
         name: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
@@ -288,8 +259,6 @@ class EquipmentRepository:
             stmt = stmt.where(self.model.user_id == user_id)
         if is_approved is not None:
             stmt = stmt.where(self.model.is_approved == is_approved)
-        if is_publish is not None:
-            stmt = stmt.where(self.model.is_publish == is_publish)
         if name:
             stmt = stmt.where(self.model.name.ilike(f"%{name}%"))
         
