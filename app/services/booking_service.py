@@ -117,3 +117,16 @@ class BookingService:
         used_quantity = sum(b.quantity for b in active)
 
         return (used_quantity + required_quantity) <= equipment.quantity
+    
+    async def get_available_quantity(self, session, equipment_id, date_from, date_to):
+        equipment = await self.equipment_repo.get_by_id(session, equipment_id)
+        conflicts = await self.repo.find_conflicting(session, equipment_id, date_from, date_to)
+
+        active = [
+            b for b in conflicts
+            if b.status in (BookingStatus.PENDING, BookingStatus.ACCEPTED)
+        ]
+
+        used = sum(b.quantity for b in active)
+        return equipment.quantity - used
+
