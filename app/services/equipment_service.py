@@ -126,24 +126,39 @@ class EquipmentService:
         *,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Equipment]:
+    ) -> list[Equipment]:
+        """
+        Возвращает оборудование выбранной категории, свободное в диапазоне дат
+        и находящееся в указанном радиусе.
+
+        Учитываются:
+            - количество свободных единиц оборудования
+            - статусы бронирований (pending, accepted)
+        """
+        # Получаем оборудование по категории и локации
         eq_list = await self._repo.get_by_category_and_location(
-            session, 
-            category_id, 
-            latitude=latitude, 
-            longitude=longitude, 
+            session,
+            category_id,
+            latitude=latitude,
+            longitude=longitude,
             radius_km=radius_km,
-            limit=limit, 
+            limit=limit,
             offset=offset
         )
-        
-        available = []
+        available: list[Equipment] = []
+
+        # Проверяем доступность каждого оборудования
         for eq in eq_list:
-            if self._booking_service:
-                is_free = await self._booking_service.is_equipment_available(session, eq.id, date_from, date_to)
-                if not is_free:
-                    continue
-            available.append(eq)
+            # Проверяем, доступна ли хотя бы 1 единица оборудования
+            is_free = await self._booking_service.is_equipment_available(
+                session,
+                equipment_id=eq.id,
+                date_from=date_from,
+                date_to=date_to,
+                required_quantity=1
+            )
+            if is_free:
+                available.append(eq)
 
         return available
     
