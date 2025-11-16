@@ -8,17 +8,17 @@ export interface EquipmentPhoto {
   id: number;
   equipment_id: number;
   filename: string;
-  content?: string; // base64 encoded image
+  content: string; // base64 encoded image - ДОБАВЬТЕ content сюда
+}
+
+export interface EquipmentPhotoListResponse {
+  photos: EquipmentPhoto[]; // Используем базовый интерфейс, но с content
+  total: number;
+  equipment_id: number;
 }
 
 export interface EquipmentPhotoWithContent extends EquipmentPhoto {
   content: string; // base64 encoded image
-}
-
-export interface EquipmentPhotoListResponse {
-  photos: EquipmentPhoto[];
-  total: number;
-  equipment_id: number;
 }
 
 export interface EquipmentPhotoCreate {
@@ -39,8 +39,12 @@ export class EquipmentPhotoService {
     return this.http.get<EquipmentPhotoListResponse>(`${this.baseUrl}/equipment/${equipmentId}`);
   }
 
-  getPhotoById(photoId: number): Observable<EquipmentPhotoWithContent> {
-    return this.http.get<EquipmentPhotoWithContent>(`${this.baseUrl}/${photoId}`);
+  // getPhotoById(photoId: number): Observable<EquipmentPhotoWithContent> {
+  //   return this.http.get<EquipmentPhotoWithContent>(`${this.baseUrl}/${photoId}`);
+  // }
+
+  getPhotoImageUrl(photoId: number): string {
+    return `${this.baseUrl}/${photoId}/image`;  // Добавьте /image
   }
 
   addPhoto(photoData: EquipmentPhotoCreate): Observable<EquipmentPhoto> {

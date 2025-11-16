@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import equipment_photos
-# from app.api.routers import equipment, bookings, users, categories
 from app.api.routers import users
 from app.api.routers import equipment
 
@@ -11,26 +10,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS middleware ДОЛЖЕН БЫТЬ ДО включения роутеров
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешить все домены
+    allow_origins=["http://localhost:4200"],  # Angular dev server
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],  # Явно указываем PATCH
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers ПОСЛЕ CORS middleware
 app.include_router(equipment.router)
-# app.include_router(bookings.router)
 app.include_router(users.router)
-# app.include_router(categories.router)
 app.include_router(equipment_photos.router)
-
 
 @app.get("/")
 async def root():
     return {"message": "NKO Bot API is running"}
-
 
 @app.get("/health")
 async def health_check():

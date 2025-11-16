@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 
 from app.api.dependencies import get_db, get_user_service
 from app.api.schemas.user_schema import (
@@ -54,15 +54,17 @@ async def check_user_exists(
 async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    is_lessor: Optional[bool] = Query(None),  # НОВЫЙ ПАРАМЕТР ФИЛЬТРА
     session: AsyncSession = Depends(get_db),
     user_service: UserService = Depends(get_user_service)
 ):
-    """Получить список пользователей с пагинацией"""
-    users = await user_service.list_users(session, skip, limit)
-    all_users = await user_service.list_users(session, 0, 10000)  # Для подсчета общего количества
+    """Получить список пользователей с пагинацией и фильтрацией"""
+    users = await user_service.list_users(session, skip, limit, is_lessor)
+    total_count = await user_service.get_total_count(session, is_lessor)  # ПЕРЕДАЕМ ФИЛЬТР
+    
     return {
         "users": users,
-        "total": len(all_users),
+        "total": total_count,
         "skip": skip,
         "limit": limit
     }
@@ -138,9 +140,9 @@ async def update_lessor_status(
         raise HTTPException(status_code=404, detail="User not found")
     
     if(user.is_lessor):
-        text = "🟢Ваш статус Арендатора подтвержден \n\nТеперь Вы можете публиковать оборудования"
+        text = "🟢Ваш статус Арендатора подтвержден \n\nТеперь Вы можете публиковать оборудования\n\nОтправьте боту \"/start\" чтобы получить доступ к новому функицоналу"
     else:
-        text = "⚠️Вы были лишены прав Арендатора. \n\nТеперь Вы можете НЕ публиковать оборудования"
+        text = "⚠️Вы были лишены прав Арендатора. \n\nТеперь Вы НЕ можете публиковать оборудования"
     await NotificationService(application).notify_user(user.tg_id,text)
     return user
 

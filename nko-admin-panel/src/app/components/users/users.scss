@@ -60,8 +60,25 @@
   margin-bottom: 16px;
 }
 
+// users.scss
+.status-chip {
+  cursor: default !important; // Убираем курсор-указатель
+  
+  &:hover {
+    transform: none !important; // Убираем эффект при наведении
+    box-shadow: none !important;
+  }
+}
+
+// Стили для меню действий
+.mat-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .delete-action {
-  color: #f44336;
+  color: #f44336; // Красный цвет для удаления
 }
 
 mat-chip {

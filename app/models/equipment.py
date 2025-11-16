@@ -55,5 +55,4 @@ class Equipment(Base):
             "rejection_reason": self.rejection_reason,
             "moderated_at": self.moderated_at,
             "moderated_by": self.moderated_by,
-            "is_visible": self.is_visible,
         }

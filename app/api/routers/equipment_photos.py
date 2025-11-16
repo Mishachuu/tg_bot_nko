@@ -1,12 +1,11 @@
 # app/api/routes/equipment_photos.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.api.dependencies import get_db, get_equipment_photo_service
 from app.api.schemas.equipment_photo_schema import (
     EquipmentPhotoResponse,
-    EquipmentPhotoWithContentResponse,
     EquipmentPhotoCreate,
     EquipmentPhotoListResponse
 )
@@ -23,34 +22,54 @@ async def get_photos_by_equipment_id(
     """Получить все фото для оборудования по ID оборудования"""
     photos = await photo_service.get_photos_by_equipment_id(session, equipment_id)
     
-    # Преобразуем в словари, если нужно
-    photos_dicts = [photo.to_dict() if hasattr(photo, 'to_dict') else {
-        'id': photo.id,
-        'equipment_id': photo.equipment_id,
-        'filename': photo.filename
-    } for photo in photos]
+    # Исключаем content из ответа
+    photos_without_content = []
+    for photo in photos:
+        photo_dict = {
+            "id": photo["id"],
+            "equipment_id": photo["equipment_id"],
+            "filename": photo["filename"]
+        }
+        photos_without_content.append(photo_dict)
     
     return {
-        "photos": photos_dicts,
-        "total": len(photos_dicts),
+        "photos": photos_without_content,
+        "total": len(photos_without_content),
         "equipment_id": equipment_id
     }
 
-@router.get("/{photo_id}", response_model=EquipmentPhotoWithContentResponse)
-async def get_photo_by_id(
+@router.get("/{photo_id}/image")
+async def get_photo_image(
     photo_id: int,
     session: AsyncSession = Depends(get_db),
     photo_service: EquipmentPhotoService = Depends(get_equipment_photo_service)
 ):
-    """Получить конкретное фото по ID фото"""
-    # Вам нужно добавить метод в репозиторий и сервис для получения фото по ID
-    photos = await photo_service.list_photos(session, equipment_id=None)  # временное решение
-    photo = next((p for p in photos if p.id == photo_id), None)
+    """Получить изображение как файл"""
+    photo = await photo_service.get_photo_by_id(session, photo_id)
     
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     
-    return photo
+    # Определяем content-type по расширению файла
+    filename = photo['filename'].lower()
+    if filename.endswith('.jpg') or filename.endswith('.jpeg'):
+        media_type = "image/jpeg"
+    elif filename.endswith('.png'):
+        media_type = "image/png"
+    elif filename.endswith('.gif'):
+        media_type = "image/gif"
+    else:
+        media_type = "application/octet-stream"
+    
+    return Response(
+        content=photo['content'],
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename={photo['filename']}"}
+    )
+
+# Удалите старый эндпоинт get_photo_by_id или закомментируйте его
+# @router.get("/{photo_id}", response_model=EquipmentPhotoWithContentResponse)
+# async def get_photo_by_id(...):
 
 @router.post("/", response_model=EquipmentPhotoResponse)
 async def add_equipment_photo(
@@ -68,12 +87,17 @@ async def add_equipment_photo(
     
     # Получаем созданное фото для ответа
     photos = await photo_service.list_photos(session, photo_data.equipment_id)
-    new_photo = next((p for p in photos if p.id == new_photo_id), None)
+    new_photo = next((p for p in photos if p["id"] == new_photo_id), None)
     
     if not new_photo:
         raise HTTPException(status_code=500, detail="Failed to create photo")
     
-    return new_photo
+    # Исключаем content из ответа
+    return {
+        "id": new_photo["id"],
+        "equipment_id": new_photo["equipment_id"],
+        "filename": new_photo["filename"]
+    }
 
 @router.delete("/{photo_id}")
 async def delete_equipment_photo(

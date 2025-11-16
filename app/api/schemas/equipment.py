@@ -55,7 +55,6 @@ class EquipmentListResponse(BaseModel):
 
 class EquipmentDetailedResponse(EquipmentResponse):
     display_status: str
-    is_visible: bool
     
     model_config = ConfigDict(from_attributes=True)
 
