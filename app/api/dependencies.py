@@ -9,6 +9,8 @@ from app.services.booking_service import BookingService
 from app.services.category_service import CategoryService
 from app.services.equipment_service import EquipmentService
 from app.services.user_service import UserService
+from app.services.equipment_photo_service import EquipmentPhotoService
+from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -39,3 +41,6 @@ async def get_equipment_service() -> EquipmentService:
 def get_user_service() -> UserService:
     repo = UserRepository()
     return UserService(repo)
+
+def get_equipment_photo_service():
+    return EquipmentPhotoService(EquipmentPhotoRepository())

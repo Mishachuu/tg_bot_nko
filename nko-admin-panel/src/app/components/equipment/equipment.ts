@@ -1,3 +1,4 @@
+// equipment.component.ts (обновленная версия)
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,6 +17,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { Equipment, EquipmentService } from '../../services/equipment';
+import { EquipmentPhotosDialogComponent, EquipmentPhotosDialogData } from '../equipment-photos-dialog/equipment-photos-dialog';
 
 @Component({
   selector: 'app-equipment',
@@ -68,6 +70,17 @@ export class EquipmentComponent implements OnInit {
 
   setCurrentEquipment(equipment: Equipment): void {
     this.currentEquipment = equipment;
+  }
+
+  viewEquipmentPhotos(equipment: Equipment): void {
+    this.dialog.open(EquipmentPhotosDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      data: {
+        equipmentId: equipment.id,
+        equipmentName: equipment.name
+      } as EquipmentPhotosDialogData
+    });
   }
 
   approveCurrentEquipment(): void {
