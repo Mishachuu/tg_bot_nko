@@ -459,7 +459,7 @@ class MainBot:
                         radius_km,
                     )
                 )
-                eqs = [eq for eq in eqs if eq.user_id != current_user.id]
+                # eqs = [eq for eq in eqs if eq.user_id != current_user.id]
                 available_equipment.extend(eqs)
 
             if not available_equipment:
@@ -658,6 +658,24 @@ class MainBot:
                 category_name
             )
 
+        await update.message.reply_text(
+            f"🛠️ Ваше оборудование ({len(equipment_list)} позиций):"
+        )
+
+        for equipment in equipment_list:
+            async with AsyncSessionLocal() as session:
+                photos = await self.equipment_photo_service.list_photos(
+                    session, equipment.id
+                )
+
+            category_name = await self._get_category_name(
+                session, equipment.category_id
+            )
+
+            card_text = self.formatter.create_my_equipment_card(
+                equipment, f"Вы (ID: {user.id})", category_name
+            )
+
             # ВЛАДЕЛЕЦ смотрит своё оборудование — никаких кнопок бронирования
             if photos:
                 await self._send_equipment_with_photos(update, equipment, None, photos)
@@ -823,8 +841,6 @@ class MainBot:
                     quantity=data["quantity"],
                     latitude=data.get("latitude"),
                     longitude=data.get("longitude"),
-                    is_approved=False,
-                    is_publish=False,
                     created_at=datetime.now(),
                 )
 

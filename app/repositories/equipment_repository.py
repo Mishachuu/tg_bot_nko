@@ -14,6 +14,7 @@ from sqlalchemy import func
 from app.helpers.gis_helper import calculate_distance
 from app.models.equipment import Equipment
 from typing import List, Optional
+from app.models.equipment import EquipmentStatus
 
 
 class EquipmentRepository:
@@ -125,7 +126,7 @@ class EquipmentRepository:
         stmt = (
             select(self._t)
             .where(distance_expr <= radius_km)
-            .where(self._t.c.is_approved == True)
+            .where(self._t.c.status == EquipmentStatus.APPROVED)
             .where(self._t.c.latitude.isnot(None))
             .where(self._t.c.longitude.isnot(None))
             .order_by(distance_expr)
@@ -157,7 +158,7 @@ class EquipmentRepository:
         stmt = (
             select(self.model)
             .where(self.model.category_id == category_id)
-            .where(self.model.is_approved == True)
+            .where(self.model.status == EquipmentStatus.APPROVED)
             .where(self.model.latitude.isnot(None))
             .where(self.model.longitude.isnot(None))
         )
@@ -166,15 +167,6 @@ class EquipmentRepository:
         
         result = await session.execute(stmt)
         all_equipment = result.scalars().all()
-        
-        print(f"📊 Всего оборудования в категории {category_id}: {len(all_equipment)}")
-        
-        # ВЫВОДИМ КАЖДЫЙ ЭЛЕМЕНТ ДЛЯ ОТЛАДКИ
-        for i, eq in enumerate(all_equipment):
-            print(f"  [{i}] Оборудование ID {eq.id}: {eq.name}")
-            print(f"      Категория: {eq.category_id}, Одобрено: {eq.is_approved}")
-            print(f"      Координаты: ({eq.latitude}, {eq.longitude})")
-            print(f"      Проверка координат: lat not None={eq.latitude is not None}, lon not None={eq.longitude is not None}")
         
         # Фильтруем по расстоянию
         filtered_equipment = []
@@ -216,17 +208,6 @@ class EquipmentRepository:
         )
         result = await session.execute(stmt)
         return result.scalars().all()
-        return res.scalars().all()
-
-    async def set_publish(self, session: AsyncSession, equipment_id: int, is_publish: bool):
-        res = await session.execute(select(self.model).where(self.model.id == equipment_id))
-        eq = res.scalars().one_or_none()
-        if not eq:
-            return None
-        eq.is_publish = bool(is_publish)
-        await session.flush()
-        await session.refresh(eq)
-        return eq
     
     async def get_total_count(self, session: AsyncSession) -> int:
         """Получить общее количество записей"""
@@ -237,31 +218,14 @@ class EquipmentRepository:
     async def get_by_approval_status(
         self, 
         session: AsyncSession, 
-        is_approved: bool,
+        status: bool,
         limit: int = 100,
         offset: int = 0
     ) -> List[Equipment]:
         """Получить по статусу одобрения"""
         stmt = (
             select(self.model)
-            .where(self.model.is_approved == is_approved)
-            .limit(limit)
-            .offset(offset)
-        )
-        result = await session.execute(stmt)
-        return result.scalars().all()
-
-    async def get_by_publish_status(
-        self, 
-        session: AsyncSession, 
-        is_publish: bool,
-        limit: int = 100,
-        offset: int = 0
-    ) -> List[Equipment]:
-        """Получить по статусу публикации"""
-        stmt = (
-            select(self.model)
-            .where(self.model.is_publish == is_publish)
+            .where(self.model.status == status)
             .limit(limit)
             .offset(offset)
         )
@@ -273,8 +237,7 @@ class EquipmentRepository:
         session: AsyncSession,
         category_id: Optional[int] = None,
         user_id: Optional[int] = None,
-        is_approved: Optional[bool] = None,
-        is_publish: Optional[bool] = None,
+        status: Optional[bool] = None,
         name: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
@@ -286,10 +249,8 @@ class EquipmentRepository:
             stmt = stmt.where(self.model.category_id == category_id)
         if user_id is not None:
             stmt = stmt.where(self.model.user_id == user_id)
-        if is_approved is not None:
-            stmt = stmt.where(self.model.is_approved == is_approved)
-        if is_publish is not None:
-            stmt = stmt.where(self.model.is_publish == is_publish)
+        if status is not None:
+            stmt = stmt.where(self.model.status == status)
         if name:
             stmt = stmt.where(self.model.name.ilike(f"%{name}%"))
         

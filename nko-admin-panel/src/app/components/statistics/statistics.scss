@@ -1,0 +1,181 @@
+.statistics-container {
+  padding: 20px;
+}
+
+.statistics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+  
+  h1 {
+    margin: 0;
+    color: #3f51b5;
+    font-size: 2rem;
+  }
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.loading-bar {
+  margin-bottom: 20px;
+}
+
+.error-card {
+  margin-bottom: 20px;
+  
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #f44336;
+  }
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stats-cards {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+}
+
+.card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px !important;
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  mat-icon {
+    font-size: 30px;
+    width: 30px;
+    height: 30px;
+    color: white;
+  }
+  
+  &.primary {
+    background: linear-gradient(135deg, #3f51b5 0%, #2196f3 100%);
+  }
+  
+  &.accent {
+    background: linear-gradient(135deg, #ff4081 0%, #f50057 100%);
+  }
+  
+  &.warn {
+    background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+  }
+  
+  &.success {
+    background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+  }
+}
+
+.stat-info {
+  flex: 1;
+  
+  h3 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  p {
+    margin: 4px 0 0 0;
+    color: #666;
+    font-size: 0.9rem;
+  }
+}
+
+.detail-card,
+.table-card,
+.advanced-card {
+  mat-card-header {
+    padding-bottom: 16px;
+    
+    mat-card-title {
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: #3f51b5;
+    }
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+// Адаптивность
+@media (max-width: 768px) {
+  .statistics-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .stats-cards {
+    mat-grid-tile {
+      min-height: 120px;
+    }
+  }
+  
+  .card-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .stat-info {
+    h3 {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .statistics-container {
+    padding: 16px;
+  }
+  
+  .statistics-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

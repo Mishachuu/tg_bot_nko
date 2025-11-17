@@ -1,11 +1,10 @@
-import { Component, OnInit, ViewChild, signal } from '@angular/core';
+// equipment.component.ts (обновленная версия)
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -14,11 +13,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
-
-import { EquipmentService, Equipment, EquipmentSearchParams } from '../../services/equipment';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
+import { Equipment, EquipmentService } from '../../services/equipment';
+import { EquipmentPhotosDialogComponent, EquipmentPhotosDialogData } from '../equipment-photos-dialog/equipment-photos-dialog';
 
 @Component({
   selector: 'app-equipment',
+  templateUrl: './equipment.html',
+  styleUrls: ['./equipment.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -26,8 +30,6 @@ import { EquipmentService, Equipment, EquipmentSearchParams } from '../../servic
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
-    MatSnackBarModule,
-    MatProgressSpinnerModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
@@ -35,159 +37,139 @@ import { EquipmentService, Equipment, EquipmentSearchParams } from '../../servic
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
-    MatMenuModule
-  ],
-  templateUrl: './equipment.html',
-  styleUrl: './equipment.scss'
+    MatMenuModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule
+  ]
 })
 export class EquipmentComponent implements OnInit {
+  private equipmentService = inject(EquipmentService);
+  private dialog = inject(MatDialog);
+  currentEquipment: Equipment | null = null;
   displayedColumns: string[] = [
-    'id', 
-    'name', 
-    'user_id', 
-    'category_id', 
-    'quantity', 
-    'is_approved', 
-    'is_publish', 
-    'created_at', 
-    'actions'
+    'id', 'name', 'user_id', 'category_id', 'quantity', 
+    'status', 'created_at', 'actions'
   ];
-  dataSource = new MatTableDataSource<Equipment>();
   
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
-
-  isLoading = signal(false);
+  dataSource = new MatTableDataSource<Equipment>([]);
   totalEquipment = signal(0);
   pageSize = 10;
   currentPage = 0;
+
+  // Фильтры
   searchQuery = '';
-  approvalFilter = '';
+  statusFilter = '';
   publishFilter = '';
 
-  constructor(
-    private equipmentService: EquipmentService,
-    private snackBar: MatSnackBar
-  ) {}
+  // Состояние загрузки
+  isLoading = signal(false);
 
   ngOnInit() {
     this.loadEquipment();
   }
 
-  ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+  setCurrentEquipment(equipment: Equipment): void {
+    this.currentEquipment = equipment;
   }
 
-  loadEquipment() {
-    this.isLoading.set(true);
-    const skip = this.currentPage * this.pageSize;
-
-    this.equipmentService.getEquipment(skip, this.pageSize).subscribe({
-      next: (response) => {
-        this.dataSource.data = response.equipments;
-        this.totalEquipment.set(response.total);
-        this.isLoading.set(false);
-      },
-      error: (error) => {
-        console.error('Error loading equipment:', error);
-        this.isLoading.set(false);
-        this.showError('Ошибка загрузки оборудования');
-      }
+  viewEquipmentPhotos(equipment: Equipment): void {
+    this.dialog.open(EquipmentPhotosDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      data: {
+        equipmentId: equipment.id,
+        equipmentName: equipment.name
+      } as EquipmentPhotosDialogData
     });
   }
 
-  onSearch() {
-    if (this.searchQuery.length >= 2) {
-      const searchParams: EquipmentSearchParams = {
-        name: this.searchQuery
-      };
-      
-      this.equipmentService.searchEquipment(searchParams).subscribe({
-        next: (equipments) => {
-          this.dataSource.data = equipments;
-          this.totalEquipment.set(equipments.length);
-        },
-        error: (error) => {
-          console.error('Error searching equipment:', error);
-          this.showError('Ошибка поиска');
-        }
-      });
-    } else if (this.searchQuery.length === 0) {
-      this.loadEquipment();
+  approveCurrentEquipment(): void {
+    if (this.currentEquipment) {
+      this.approveEquipment(this.currentEquipment);
     }
   }
 
-  onPageChange(event: any) {
+  rejectCurrentEquipment(): void {
+    if (this.currentEquipment) {
+      this.rejectEquipment(this.currentEquipment);
+    }
+  }
+
+  showRejectionReason(): void {
+    if (this.currentEquipment?.rejection_reason) {
+      alert(`Причина отклонения: ${this.currentEquipment.rejection_reason}`);
+    } else {
+      alert('Причина отклонения не указана');
+    }
+  }
+
+  loadEquipment(): void {
+    this.isLoading.set(true);
+    
+    this.equipmentService.getEquipment(this.currentPage * this.pageSize, this.pageSize)
+      .subscribe({
+        next: (response) => {
+          this.dataSource.data = response.equipments;
+          this.totalEquipment.set(response.total);
+          this.isLoading.set(false);
+        },
+        error: (error) => {
+          console.error('Error loading equipment:', error);
+          this.isLoading.set(false);
+        }
+      });
+  }
+
+  onPageChange(event: PageEvent): void {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
     this.loadEquipment();
   }
 
-  toggleApprovalStatus(equipment: Equipment) {
-    const newStatus = !equipment.is_approved;
-    this.equipmentService.updateApprovalStatus(equipment.id!, newStatus).subscribe({
-      next: (updatedEquipment) => {
-        equipment.is_approved = updatedEquipment.is_approved;
-        this.showSuccess(`Статус одобрения обновлен`);
-      },
-      error: (error) => {
-        console.error('Error updating approval status:', error);
-        this.showError('Ошибка обновления статуса одобрения');
-      }
-    });
-  }
-
-  togglePublishStatus(equipment: Equipment) {
-    const newStatus = !equipment.is_publish;
-    this.equipmentService.updatePublishStatus(equipment.id!, newStatus).subscribe({
-      next: (updatedEquipment) => {
-        equipment.is_publish = updatedEquipment.is_publish;
-        this.showSuccess(`Статус публикации обновлен`);
-      },
-      error: (error) => {
-        console.error('Error updating publish status:', error);
-        this.showError('Ошибка обновления статуса публикации');
-      }
-    });
-  }
-
-  editEquipment(equipment: Equipment) {
-    // TODO: Реализовать диалог редактирования
-    this.showSuccess(`Редактирование оборудования "${equipment.name}"`);
-  }
-
-  viewEquipmentDetails(equipment: Equipment) {
-    // TODO: Реализовать просмотр деталей
-    this.showSuccess(`Просмотр оборудования "${equipment.name}"`);
-  }
-
-  deleteEquipment(equipmentId: number) {
-    if (confirm('Вы уверены, что хотите удалить это оборудование?')) {
-      this.equipmentService.deleteEquipment(equipmentId).subscribe({
-        next: () => {
-          this.loadEquipment();
-          this.showSuccess('Оборудование удалено');
-        },
-        error: (error) => {
-          console.error('Error deleting equipment:', error);
-          this.showError('Ошибка удаления оборудования');
-        }
-      });
+  // Методы для работы со статусами
+  getStatusColor(status: string): string {
+    switch (status) {
+      case 'approved': return 'primary';
+      case 'moderation': return 'warn';
+      case 'rejected': return 'warn';
+      default: return 'basic';
     }
   }
 
-  private showSuccess(message: string) {
-    this.snackBar.open(message, 'Закрыть', {
-      duration: 3000,
-      panelClass: ['success-snackbar']
-    });
+  getStatusDisplay(status: string): string {
+    switch (status) {
+      case 'approved': return '✅ Одобрено';
+      case 'moderation': return '⏳ На модерации';
+      case 'rejected': return '❌ Отклонено';
+      default: return status;
+    }
   }
 
-  private showError(message: string) {
-    this.snackBar.open(message, 'Закрыть', {
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+  approveEquipment(equipment: Equipment): void {
+    this.equipmentService.approveEquipment(equipment.id!)
+      .subscribe({
+        next: (updatedEquipment) => {
+          equipment.status = updatedEquipment.status;
+        },
+        error: (error) => {
+          console.error('Error approving equipment:', error);
+        }
+      });
+  }
+
+  rejectEquipment(equipment: Equipment): void {
+    const reason = prompt('Введите причину отклонения:');
+    if (reason !== null) {
+      this.equipmentService.rejectEquipment(equipment.id!, reason)
+        .subscribe({
+          next: (updatedEquipment) => {
+            equipment.status = updatedEquipment.status;
+            equipment.rejection_reason = updatedEquipment.rejection_reason;
+          },
+          error: (error) => {
+            console.error('Error rejecting equipment:', error);
+          }
+        });
+    }
   }
 }

@@ -1,0 +1,71 @@
+<!-- app/components/equipment-photos-dialog/equipment-photos-dialog.component.html -->
+<div class="photos-dialog">
+  <div mat-dialog-title class="dialog-header">
+    <h2>Фотографии оборудования</h2>
+    <button mat-icon-button (click)="close()" class="close-button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div mat-dialog-content class="dialog-content">
+    <div class="equipment-info">
+      <h3>{{ data.equipmentName }}</h3>
+      <p>ID оборудования: {{ data.equipmentId }}</p>
+    </div>
+
+    <!-- Состояние загрузки -->
+    <div *ngIf="isLoading" class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Загрузка фотографий...</p>
+    </div>
+
+    <!-- Нет фотографий -->
+    <div *ngIf="!isLoading && photos.length === 0" class="empty-state">
+      <mat-icon>photo_camera</mat-icon>
+      <p>Фотографии отсутствуют</p>
+    </div>
+
+    <!-- Галерея фотографий -->
+    <div *ngIf="!isLoading && photos.length > 0" class="photo-gallery">
+      <div class="gallery-controls">
+        <button mat-icon-button (click)="previousImage()" [disabled]="currentImageIndex === 0">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        
+        <div class="image-counter">
+          {{ currentImageIndex + 1 }} / {{ photos.length }}
+        </div>
+        
+        <button mat-icon-button (click)="nextImage()" [disabled]="currentImageIndex === photos.length - 1">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <div class="current-image">
+        <img 
+          [src]="getCurrentImageUrl()" 
+          [alt]="photos[currentImageIndex].filename"
+          class="photo-image"
+          (error)="handleImageError($event)"
+          *ngIf="!hasImageError(photos[currentImageIndex].id)">
+        
+        <div *ngIf="hasImageError(photos[currentImageIndex].id)" class="image-error">
+          <mat-icon>broken_image</mat-icon>
+          <p>Ошибка загрузки изображения</p>
+        </div>
+      </div>
+
+      <div class="photo-info">
+        <p><strong>Файл:</strong> {{ photos[currentImageIndex].filename }}</p>
+        <p *ngIf="hasImageError(photos[currentImageIndex].id)" class="error-text">
+          <mat-icon>warning</mat-icon>
+          Не удалось загрузить изображение
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="close()">Закрыть</button>
+  </div>
+</div>

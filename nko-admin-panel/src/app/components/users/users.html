@@ -13,18 +13,12 @@
   <!-- Filters -->
   <mat-card class="filters-card">
     <div class="filters">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Поиск по имени</mat-label>
-        <input matInput [(ngModel)]="searchQuery" (keyup)="onSearch()" placeholder="Введите имя...">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-
       <mat-form-field appearance="outline">
         <mat-label>Статус арендодателя</mat-label>
-        <mat-select [(ngModel)]="lessorFilter" (selectionChange)="loadUsers()">
+        <mat-select [(ngModel)]="lessorFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Все пользователи</mat-option>
-          <!-- <mat-option value="true">Арендодатели</mat-option>
-          <mat-option value="false">Не арендодатели</mat-option> -->
+          <mat-option value="true">Арендодатели</mat-option>
+          <mat-option value="false">Не арендодатели</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -92,7 +86,8 @@
             <mat-chip-set>
               <mat-chip 
                 [color]="user.is_lessor ? 'accent' : 'basic'" 
-                (click)="toggleLessorStatus(user)">
+                [disableRipple]="true"
+                class="status-chip">
                 {{ user.is_lessor ? 'Арендодатель' : 'Пользователь' }}
               </mat-chip>
             </mat-chip-set>
@@ -107,10 +102,24 @@
               <mat-icon>more_vert</mat-icon>
             </button>
             <mat-menu #menu="matMenu">
+              <!-- ДЕЙСТВИЯ ДЛЯ ИЗМЕНЕНИЯ СТАТУСА -->
+              @if (user.is_lessor) {
+                <button mat-menu-item (click)="revokeLessorStatus(user)">
+                  <mat-icon color="warn">block</mat-icon>
+                  <span>Отозвать права арендодателя</span>
+                </button>
+              } @else {
+                <button mat-menu-item (click)="grantLessorStatus(user)">
+                  <mat-icon color="primary">verified</mat-icon>
+                  <span>Назначить арендодателем</span>
+                </button>
+              }
+              
               <button mat-menu-item (click)="editUser(user)">
                 <mat-icon>edit</mat-icon>
                 <span>Редактировать</span>
               </button>
+              
               <button mat-menu-item (click)="deleteUser(user.id!)" class="delete-action">
                 <mat-icon color="warn">delete</mat-icon>
                 <span>Удалить</span>

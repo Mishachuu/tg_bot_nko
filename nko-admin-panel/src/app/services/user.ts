@@ -38,10 +38,15 @@ export class UserService {
   constructor(private http: HttpClient) {}
 
   // Получить список пользователей с пагинацией
-  getUsers(skip: number = 0, limit: number = 100): Observable<UserListResponse> {
+  getUsers(skip: number = 0, limit: number = 100, isLessor?: boolean): Observable<UserListResponse> {
     let params = new HttpParams()
       .set('skip', skip.toString())
       .set('limit', limit.toString());
+
+    // Добавляем параметр фильтрации если он указан
+    if (isLessor !== undefined) {
+      params = params.set('is_lessor', isLessor.toString());
+    }
 
     return this.http.get<UserListResponse>(this.baseUrl, { params });
   }

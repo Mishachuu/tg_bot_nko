@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
+from app.models.equipment import EquipmentStatus  # Импортируем из модели
 
 class EquipmentCreate(BaseModel):
     name: str
@@ -16,13 +17,15 @@ class EquipmentResponse(BaseModel):
     name: str
     user_id: int
     category_id: int
-    is_approved: bool
-    is_publish: bool
+    status: EquipmentStatus
     description: Optional[str]
     quantity: int
     created_at: datetime
     latitude: Optional[float]
     longitude: Optional[float]
+    rejection_reason: Optional[str] = None
+    moderated_at: Optional[datetime] = None
+    moderated_by: Optional[int] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,14 +36,13 @@ class EquipmentUpdate(BaseModel):
     quantity: Optional[int] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    is_approved: Optional[bool] = None
-    is_publish: Optional[bool] = None
+    status: Optional[EquipmentStatus] = None
 
-class EquipmentApprovalUpdate(BaseModel):
-    is_approved: bool
+class EquipmentStatusUpdate(BaseModel):
+    status: EquipmentStatus
 
-class EquipmentPublishUpdate(BaseModel):
-    is_publish: bool
+class EquipmentRejectUpdate(BaseModel):
+    reason: Optional[str] = None
 
 class EquipmentQuantityUpdate(BaseModel):
     quantity: int
@@ -59,8 +61,13 @@ class EquipmentDetailedResponse(EquipmentResponse):
 class EquipmentSearchParams(BaseModel):
     category_id: Optional[int] = None
     user_id: Optional[int] = None
-    is_approved: Optional[bool] = None
-    is_publish: Optional[bool] = None
+    status: Optional[EquipmentStatus] = None
     name: Optional[str] = None
     skip: Optional[int] = 0
     limit: Optional[int] = 100
+
+class EquipmentStatsResponse(BaseModel):
+    total: int
+    moderation: int
+    approved: int
+    rejected: int
