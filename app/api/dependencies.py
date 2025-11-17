@@ -11,6 +11,7 @@ from app.services.equipment_service import EquipmentService
 from app.services.user_service import UserService
 from app.services.equipment_photo_service import EquipmentPhotoService
 from app.repositories.equipment_photo_repository import EquipmentPhotoRepository
+from app.services.statistics_service import StatisticsService
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -25,6 +26,8 @@ def get_booking_service() -> BookingService:
     repo = BookingRepository()
     return BookingService(repo)
 
+def get_statistics_service() -> StatisticsService:
+    return StatisticsService()
 
 def get_category_service() -> CategoryService:
     repo = CategoryRepository()

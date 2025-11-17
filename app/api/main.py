@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import equipment_photos
 from app.api.routers import users
 from app.api.routers import equipment
+from app.api.routers import statistics
 
 app = FastAPI(
     title="NKO Bot API",
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 # Include routers ПОСЛЕ CORS middleware
+app.include_router(statistics.router)
 app.include_router(equipment.router)
 app.include_router(users.router)
 app.include_router(equipment_photos.router)

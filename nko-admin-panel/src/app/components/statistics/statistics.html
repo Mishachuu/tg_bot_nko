@@ -1,0 +1,217 @@
+<div class="statistics-container">
+  <!-- Заголовок и управление -->
+  <div class="statistics-header">
+    <h1>📊 Панель статистики</h1>
+    <div class="controls">
+      <mat-slide-toggle 
+        [(ngModel)]="includeAdvanced" 
+        (change)="onIncludeAdvancedChange()"
+        color="primary">
+        Расширенная статистика
+      </mat-slide-toggle>
+      <button 
+        mat-raised-button 
+        color="primary" 
+        (click)="refreshStatistics()"
+        [disabled]="loading">
+        <mat-icon>refresh</mat-icon>
+        Обновить
+      </button>
+    </div>
+  </div>
+
+  <!-- Индикатор загрузки -->
+  <mat-progress-bar 
+    *ngIf="loading"
+    mode="indeterminate" 
+    class="loading-bar">
+  </mat-progress-bar>
+
+  <!-- Сообщение об ошибке -->
+  <mat-card *ngIf="error" class="error-card">
+    <mat-card-content>
+      <div class="error-message">
+        <mat-icon color="warn">error</mat-icon>
+        <span>{{ error }}</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Основная статистика -->
+  <div *ngIf="statistics && !loading" class="stats-content">
+    
+    <!-- Карточки с основной статистикой -->
+    <mat-grid-list cols="2" rowHeight="100px" class="stats-cards">
+      <mat-grid-tile>
+        <mat-card class="stat-card">
+          <mat-card-content class="card-content">
+            <div class="stat-icon primary">
+              <mat-icon>people</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ statistics.base_stats.total_users }}</h3>
+              <p>Всего пользователей</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </mat-grid-tile>
+
+      <mat-grid-tile>
+        <mat-card class="stat-card">
+          <mat-card-content class="card-content">
+            <div class="stat-icon accent">
+              <mat-icon>business_center</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ statistics.base_stats.total_lessors }}</h3>
+              <p>Арендодателей</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </mat-grid-tile>
+
+      <mat-grid-tile>
+        <mat-card class="stat-card">
+          <mat-card-content class="card-content">
+            <div class="stat-icon warn">
+              <mat-icon>construction</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ statistics.base_stats.total_equipment }}</h3>
+              <p>Единиц оборудования</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </mat-grid-tile>
+
+      <mat-grid-tile>
+        <mat-card class="stat-card">
+          <mat-card-content class="card-content">
+            <div class="stat-icon success">
+              <mat-icon>book_online</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ statistics.base_stats.approved_bookings + statistics.base_stats.rejected_bookings }}</h3>
+              <p>Всего бронирований</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </mat-grid-tile>
+    </mat-grid-list>
+
+    <!-- Детальная статистика бронирований -->
+    <mat-card class="detail-card">
+      <mat-card-header>
+        <mat-card-title>📈 Статистика бронирований</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list>
+          <mat-list-item>
+            <mat-icon matListItemIcon color="primary">check_circle</mat-icon>
+            <div matListItemTitle>Подтвержденные бронирования</div>
+            <div matListItemLine>{{ statistics.base_stats.approved_bookings }}</div>
+          </mat-list-item>
+          <mat-list-item>
+            <mat-icon matListItemIcon color="warn">cancel</mat-icon>
+            <div matListItemTitle>Отклоненные бронирования</div>
+            <div matListItemLine>{{ statistics.base_stats.rejected_bookings }}</div>
+          </mat-list-item>
+          <mat-list-item>
+            <mat-icon matListItemIcon>donut_large</mat-icon>
+            <div matListItemTitle>Общее количество</div>
+            <div matListItemLine>{{ statistics.base_stats.approved_bookings + statistics.base_stats.rejected_bookings }}</div>
+          </mat-list-item>
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Популярные категории -->
+    <mat-card class="table-card">
+      <mat-card-header>
+        <mat-card-title>🏷️ Популярные категории</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="statistics.popular_categories" class="full-width">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Категория</th>
+            <td mat-cell *matCellDef="let category">
+              {{ category.category_name || 'Категория ' + category.category_id }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="equipment">
+            <th mat-header-cell *matHeaderCellDef>Оборудования</th>
+            <td mat-cell *matCellDef="let category">{{ category.equipment_count }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="bookings">
+            <th mat-header-cell *matHeaderCellDef>Бронирования</th>
+            <td mat-cell *matCellDef="let category">{{ category.booking_count }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="categoryColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: categoryColumns;"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Популярное оборудование -->
+    <mat-card class="table-card">
+      <mat-card-header>
+        <mat-card-title>🔧 Популярное оборудование</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="statistics.popular_items" class="full-width">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Оборудование</th>
+            <td mat-cell *matCellDef="let item">
+              {{ item.equipment_name || 'Оборудование ' + item.equipment_id }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="bookings">
+            <th mat-header-cell *matHeaderCellDef>Бронирования</th>
+            <td mat-cell *matCellDef="let item">{{ item.booking_count }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="quantity">
+            <th mat-header-cell *matHeaderCellDef>Количество</th>
+            <td mat-cell *matCellDef="let item">{{ item.total_quantity_booked }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="itemColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: itemColumns;"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Расширенная статистика -->
+    <mat-card *ngIf="statistics.advanced_stats" class="advanced-card">
+      <mat-card-header>
+        <mat-card-title>📊 Расширенная статистика</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list>
+          <mat-list-item>
+            <mat-icon matListItemIcon>schedule</mat-icon>
+            <div matListItemTitle>Средний срок аренды</div>
+            <div matListItemLine>
+              {{ (statistics.advanced_stats.avg_rental_duration_days || 0).toFixed(1) }} дней
+            </div>
+          </mat-list-item>
+          <mat-list-item>
+            <mat-icon matListItemIcon>activity</mat-icon>
+            <div matListItemTitle>Активных пользователей</div>
+            <div matListItemLine>{{ statistics.advanced_stats.active_users_count }}</div>
+          </mat-list-item>
+          <mat-list-item>
+            <mat-icon matListItemIcon>calendar_today</mat-icon>
+            <div matListItemTitle>Всего дней аренды</div>
+            <div matListItemLine>{{ statistics.advanced_stats.total_rental_days }}</div>
+          </mat-list-item>
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+</div>

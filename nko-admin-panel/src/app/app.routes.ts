@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { StatisticsComponent } from './components/statistics/statistics';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/users', pathMatch: 'full' },
@@ -9,6 +10,10 @@ export const routes: Routes = [
   { 
     path: 'equipment', 
     loadComponent: () => import('./components/equipment/equipment').then(m => m.EquipmentComponent)
+  },
+  { 
+    path: 'statistics', 
+    loadComponent: () => import('./components/statistics/statistics').then(m => m.StatisticsComponent)
   },
   { path: '**', redirectTo: '/users' }
 ];
