@@ -29,14 +29,14 @@ class StatisticsRepository:
         
         # Количество подтвержденных бронирований
         approved_bookings_query = select(func.count(Booking.id)).where(
-            Booking.status == BookingStatus.CONFIRMED
+            Booking.status == BookingStatus.ACCEPTED
         )
         approved_bookings_result = await session.execute(approved_bookings_query)
         approved_bookings = approved_bookings_result.scalar_one()
         
         # Количество отклоненных бронирований
         rejected_bookings_query = select(func.count(Booking.id)).where(
-            Booking.status == BookingStatus.REJECTED
+            Booking.status == BookingStatus.DECLINED
         )
         rejected_bookings_result = await session.execute(rejected_bookings_query)
         rejected_bookings = rejected_bookings_result.scalar_one()
@@ -125,7 +125,7 @@ class StatisticsRepository:
             )
         ).where(
             and_(
-                Booking.status == BookingStatus.CONFIRMED,
+                Booking.status == BookingStatus.ACCEPTED,
                 Booking.date_to.isnot(None),
                 Booking.date_from.isnot(None)
             )
@@ -159,7 +159,7 @@ class StatisticsRepository:
                 ), 0
             )
         ).where(
-            Booking.status == BookingStatus.CONFIRMED
+            Booking.status == BookingStatus.ACCEPTED
         )
         
         total_rental_days_result = await session.execute(total_rental_days_query)

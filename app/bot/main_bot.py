@@ -459,7 +459,7 @@ class MainBot:
                         radius_km,
                     )
                 )
-                eqs = [eq for eq in eqs if eq.user_id != current_user.id]
+                # eqs = [eq for eq in eqs if eq.user_id != current_user.id]
                 available_equipment.extend(eqs)
 
             if not available_equipment:
