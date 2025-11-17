@@ -31,6 +31,35 @@ class EquipmentCardFormatter:
             card_lines.append(f"📦 Свободно на выбранные даты: *{available_quantity} шт.*")
 
         return "\n".join(card_lines)
+    
+    @classmethod
+    def create_my_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно", category: str = "Не указано") -> str:
+        """Создает форматированную карточку оборудования"""
+        
+        # Конечно лучше сделать Enum, но я бы пока что сделал что у нас поле is_publish nullable и если значение None то оборудование на модерации ниже видно:
+        #if(equipment.is_approved is None):
+        #    moderation_text = "Модерация: Ожидайте ⏳"
+        #elif(equipment.is_approved):
+        #    moderation_text = "Модерация: Пройдена🟢"
+        #else:
+        #    moderation_text = "Модерация: Не пройдена🔴"
+
+        if(equipment.is_approved):
+            moderation_text = "Модерация: Пройдена🟢"
+        else:
+            moderation_text = "Модерация: Ожидайте ⏳"
+
+        card_lines = [
+            f"*{equipment.name or 'Без названия'}*",
+            f"Описание: {equipment.description or 'Нет описания'}",
+            f"Количество: {equipment.quantity} шт.",
+            f"Категория: {category}",
+            f"Арендодатель: {landlord_name}", 
+            f"{moderation_text}"
+        ]
+        
+        return "\n".join(card_lines)
+    
     personal_data_consent = """🔐 *Согласие на обработку персональных данных*
 
 Для продолжения работы с ботом и получения услуг, нам необходимо ваше согласие на обработку ваших персональных данных.
