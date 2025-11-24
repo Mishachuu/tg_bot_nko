@@ -6,3 +6,13 @@ class BookingStatus(str, Enum):
     ACCEPTED = "accepted"
     DECLINED = "declined"
     CANCELED = "canceled"
+    
+    @property
+    def label(self) -> str:
+        labels = {
+            BookingStatus.PENDING: "Ожидает подтверждения",
+            BookingStatus.ACCEPTED: "Подтверждено",
+            BookingStatus.DECLINED: "Отклонено",
+            BookingStatus.CANCELED: "Отменено",
+        }
+        return labels[self]

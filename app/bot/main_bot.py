@@ -1291,7 +1291,7 @@ class MainBot:
         for booking in bookings:
             response += (
                 f"• ID {booking.id}: {booking.date_from:%d.%m.%Y} - {booking.date_to:%d.%m.%Y} | "
-                f"Количество: {booking.quantity} | Статус: {booking.status.value}\n"
+                f"Количество: {booking.quantity} | Статус: {booking.status.label}\n"
             )
 
         await update.message.reply_text(response)
