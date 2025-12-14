@@ -34,9 +34,21 @@ class EquipmentRepository:
         await session.refresh(equipment)
         return equipment
     
-    async def get_all(self, session: AsyncSession, limit: int = 100, offset: int = 0):
-        """Return:  List[Equipment]"""
-        stmt = select(self.model).limit(limit).offset(offset)
+    async def get_all(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        status: Optional[EquipmentStatus] = None
+    ):
+        stmt = select(self.model)
+
+        if status is not None:
+            stmt = stmt.where(self.model.status == status)
+
+        stmt = stmt.limit(limit).offset(offset)
+
         result = await session.execute(stmt)
         return result.scalars().all()
 
@@ -209,11 +221,19 @@ class EquipmentRepository:
         result = await session.execute(stmt)
         return result.scalars().all()
     
-    async def get_total_count(self, session: AsyncSession) -> int:
-        """Получить общее количество записей"""
+    async def get_total_count(
+        self,
+        session: AsyncSession,
+        *,
+        status: Optional[EquipmentStatus] = None
+    ) -> int:
         stmt = select(func.count(Equipment.id))
+
+        if status is not None:
+            stmt = stmt.where(Equipment.status == status)
+
         result = await session.execute(stmt)
-        return result.scalar()
+        return result.scalar_one()
 
     async def get_by_approval_status(
         self, 

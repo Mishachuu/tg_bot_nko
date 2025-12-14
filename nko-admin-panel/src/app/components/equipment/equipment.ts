@@ -105,20 +105,24 @@ export class EquipmentComponent implements OnInit {
 
   loadEquipment(): void {
     this.isLoading.set(true);
-    
-    this.equipmentService.getEquipment(this.currentPage * this.pageSize, this.pageSize)
-      .subscribe({
-        next: (response) => {
-          this.dataSource.data = response.equipments;
-          this.totalEquipment.set(response.total);
-          this.isLoading.set(false);
-        },
-        error: (error) => {
-          console.error('Error loading equipment:', error);
-          this.isLoading.set(false);
-        }
-      });
+
+    this.equipmentService.getEquipment(
+      this.currentPage * this.pageSize,
+      this.pageSize,
+      this.statusFilter || undefined
+    ).subscribe({
+      next: (response) => {
+        this.dataSource.data = response.equipments;
+        this.totalEquipment.set(response.total);
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Error loading equipment:', error);
+        this.isLoading.set(false);
+      }
+    });
   }
+
 
   onPageChange(event: PageEvent): void {
     this.currentPage = event.pageIndex;

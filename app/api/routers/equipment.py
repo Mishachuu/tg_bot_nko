@@ -16,11 +16,21 @@ router = APIRouter(prefix="/equipment", tags=["equipment"])
 async def list_equipment(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    status: Optional[EquipmentStatus] = Query(None),
     session: AsyncSession = Depends(get_db),
     equipment_service: EquipmentService = Depends(get_equipment_service)
 ):
-    equipments = await equipment_service.list_equipment(session, limit=limit, offset=skip)
-    total_count = await equipment_service.get_total_count(session)
+    equipments = await equipment_service.list_equipment(
+        session,
+        limit=limit,
+        offset=skip,
+        status=status
+    )
+    total_count = await equipment_service.get_total_count(
+        session,
+        status=status
+    )
+
     return {
         "equipments": equipments,
         "total": total_count,
