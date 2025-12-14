@@ -82,7 +82,7 @@ class MainBot:
         """Главный обработчик всех сообщений"""
         user_id = update.effective_user.id
         message_text = update.message.text.strip()
-        
+
         if message_text == "⬅️ В главное меню":
             self.user_states.pop(user_id, None)
             await self._show_main_menu(update, user_id)
@@ -176,7 +176,7 @@ class MainBot:
                 "📧 Введите ваш email (или 'пропустить'):",
                 reply_markup=self._back_to_menu_keyboard()
             )
-            
+
         elif state == self.REGISTRATION_STATES["WAITING_FOR_EMAIL"]:
             if message_text.lower() != "пропустить":
                 data["email"] = message_text
@@ -209,7 +209,7 @@ class MainBot:
             self.user_states.pop(user_id, None)
             await self._show_main_menu(update, user_id)
             return
-        
+
         """Обработка различных состояний"""
         if user_id not in self.user_states:
             await update.message.reply_text(
@@ -264,6 +264,7 @@ class MainBot:
             )
 
     # ========== ПОИСК ОБОРУДОВАНИЯ ==========
+
     async def _start_search_flow(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int
     ):
@@ -459,7 +460,6 @@ class MainBot:
                         radius_km,
                     )
                 )
-                # eqs = [eq for eq in eqs if eq.user_id != current_user.id]
                 available_equipment.extend(eqs)
 
             if not available_equipment:
@@ -501,17 +501,23 @@ class MainBot:
                     session, eq.user_id
                 )
 
+                owner_username = None
+                owner_tg_id = None
+
                 if owner and owner.tg_id:
+                    owner_tg_id = owner.tg_id
                     try:
                         tguser = await context.bot.get_chat(owner.tg_id)
                         username = tguser.username
-                        owner_info = (
-                            f" @{username}" if username else " Неизвестен"
-                        )
+                        if username:
+                            owner_username = username
+                            owner_info = f" @{username}"
+                        else:
+                            owner_info = " (username не указан)"
                     except Exception:
-                        owner_info = " Недоступен"
+                        owner_info = " (профиль недоступен)"
                 else:
-                    owner_info = " Не указан"
+                    owner_info = " (владелец не указан)"
 
                 available_qty = await self.booking_service.get_available_quantity(
                     session, eq.id, data["date_from"], data["date_to"]
@@ -534,7 +540,11 @@ class MainBot:
                 # клавиатура только если текущий пользователь не владелец
                 reply_markup = None
                 if current_user and current_user.id != eq.user_id:
-                    reply_markup = self._build_equipment_inline_keyboard(eq.id)
+                    reply_markup = self._build_equipment_inline_keyboard(
+                        eq.id,
+                        owner_tg_id=owner_tg_id,
+                        owner_username=owner_username,
+                    )
 
                 # Фото медиагруппой + карточка с кнопками/без кнопок
                 if photos:
@@ -598,6 +608,7 @@ class MainBot:
             return "Неизвестная категория"
 
     # ========== УПРАВЛЕНИЕ ОБОРУДОВАНИЕМ (для арендодателей) ==========
+
     async def _check_lessor_and_start_equipment_flow(
         self, update: Update, user_id: int
     ):
@@ -647,23 +658,6 @@ class MainBot:
 
         for equipment in equipment_list:
             async with AsyncSessionLocal() as session:
-                photos = await self.equipment_photo_service.list_photos(session, equipment.id)
-            
-            # Создаем карточку оборудования
-            category_name = await self._get_category_name(session, equipment.category_id)
-
-            card_text = self.formatter.create_my_equipment_card(
-                equipment, 
-                f"Вы (ID: {user.id})", # нах нам тут user.id ? 
-                category_name
-            )
-
-        await update.message.reply_text(
-            f"🛠️ Ваше оборудование ({len(equipment_list)} позиций):"
-        )
-
-        for equipment in equipment_list:
-            async with AsyncSessionLocal() as session:
                 photos = await self.equipment_photo_service.list_photos(
                     session, equipment.id
                 )
@@ -690,13 +684,43 @@ class MainBot:
                 )
 
     def _build_equipment_inline_keyboard(
-        self, equipment_id: int
+        self,
+        equipment_id: int,
+        owner_tg_id=None,
+        owner_username=None,
     ) -> InlineKeyboardMarkup:
-        """Клавиатура под карточкой оборудования"""
+        """Клавиатура под карточкой оборудования.
+
+        Если есть username владельца — кнопка ведёт в его личку через https://t.me/username.
+        Если username нет, но есть tg_id — пробуем tg://user?id=...
+        Если ничего нет — fallback на callback ask_...
+        """
         keyboard = [
-            [InlineKeyboardButton("📅 Забронировать", callback_data=f"book_{equipment_id}")],
-            [InlineKeyboardButton("💬 Задать вопрос", callback_data=f"ask_{equipment_id}")],
+            [
+                InlineKeyboardButton(
+                    "📅 Забронировать",
+                    callback_data=f"book_{equipment_id}",
+                )
+            ]
         ]
+
+        if owner_username:
+            ask_button = InlineKeyboardButton(
+                "💬 Задать вопрос",
+                url=f"https://t.me/{owner_username}",
+            )
+        elif owner_tg_id:
+            ask_button = InlineKeyboardButton(
+                "💬 Задать вопрос",
+                url=f"tg://user?id={owner_tg_id}",
+            )
+        else:
+            ask_button = InlineKeyboardButton(
+                "💬 Задать вопрос",
+                callback_data=f"ask_{equipment_id}",
+            )
+
+        keyboard.append([ask_button])
         return InlineKeyboardMarkup(keyboard)
 
     async def _send_equipment_with_photos(
@@ -848,7 +872,7 @@ class MainBot:
                     session, equipment
                 )
 
-                if "photos" in data and data["photos"]:
+                if "photos" in data and data["photos"] and data["photos"]:
                     for photo_data in data["photos"]:
                         await self.equipment_photo_service.add_photo(
                             session,
@@ -1019,6 +1043,7 @@ class MainBot:
         )
 
     # ========== БРОНИРОВАНИЕ ==========
+
     async def _handle_booking_flow(
         self,
         update: Update,
@@ -1148,7 +1173,6 @@ class MainBot:
             )
             self.user_states.pop(user_id, None)
 
-
     async def _notify_owner_about_booking(
         self, context, session, booking, renter: AppUser
     ):
@@ -1250,6 +1274,7 @@ class MainBot:
             )
 
     # ========== ОБЩИЕ ФУНКЦИИ ==========
+
     async def _show_my_bookings(self, update: Update, user_id: int):
         """Показывает бронирования пользователя"""
         async with AsyncSessionLocal() as session:
@@ -1266,7 +1291,7 @@ class MainBot:
         for booking in bookings:
             response += (
                 f"• ID {booking.id}: {booking.date_from:%d.%m.%Y} - {booking.date_to:%d.%m.%Y} | "
-                f"Количество: {booking.quantity} | Статус: {booking.status.value}\n"
+                f"Количество: {booking.quantity} | Статус: {booking.status.label}\n"
             )
 
         await update.message.reply_text(response)
@@ -1345,7 +1370,8 @@ class MainBot:
         elif callback_data.startswith("ask_"):
             equipment_id = int(callback_data.split("_")[1])
             await query.edit_message_text(
-                f"💬 Вопрос по оборудованию ID: {equipment_id}"
+                "😔 Извините, перейти в диалог с арендодателем не получилось.\n"
+                "Похоже, у арендодателя не указан публичный профиль в Telegram."
             )
 
         elif callback_data.startswith("booking_accept_") or callback_data.startswith(
@@ -1447,19 +1473,19 @@ class MainBot:
                 self.handle_risk_warning_consent, pattern="^consent_risk_warning$"
             ),
         ]
-        
+
     def _back_to_menu_keyboard(self):
         return ReplyKeyboardMarkup(
             [["⬅️ В главное меню"]],
             resize_keyboard=True
         )
-        
+
     def _retry_keyboard(self):
         return ReplyKeyboardMarkup(
             [["🔁 Повторить ввод"], ["↩️ В меню"]],
             resize_keyboard=True
         )
-        
+
     async def _repeat_last_question(self, update: Update, user_id: int):
         """Повторяет последний вопрос в зависимости от активного состояния."""
         if user_id not in self.user_states:
@@ -1475,9 +1501,9 @@ class MainBot:
         elif state == self.SEARCH_STATES["CHOOSING_CATEGORIES"]:
             await self._ask_categories(update, user_id, self.user_states[user_id]["data"]["selected_categories"])
         elif state == self.SEARCH_STATES["ENTERING_DATE_FROM"]:
-            await update.message.reply_text("Введите дату начала аренды (ГГГГ.ММ.ДД):")
+            await update.message.reply_text("Введите дату начала аренды (ДД.ММ.ГГГГ):")
         elif state == self.SEARCH_STATES["ENTERING_DATE_TO"]:
-            await update.message.reply_text("Введите дату окончания аренды (ГГГГ.ММ.ДД):")
+            await update.message.reply_text("Введите дату окончания аренды (ДД.ММ.ГГГГ):")
 
         # Бронирование
         elif state == self.BOOKING_STATES["ENTERING_DATE_FROM"]:
@@ -1512,5 +1538,3 @@ class MainBot:
         else:
             await update.message.reply_text("Не понял. Возвращаю в меню.")
             await self._show_main_menu(update, user_id)
-
-

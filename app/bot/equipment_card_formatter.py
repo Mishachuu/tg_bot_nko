@@ -38,7 +38,13 @@ class EquipmentCardFormatter:
         if(equipment.status == EquipmentStatus.APPROVED):
             moderation_text = "Модерация: Пройдена🟢"
         elif(equipment.status == EquipmentStatus.REJECTED):
-            moderation_text = "Модерация: НЕ пройдена🔴"
+            if equipment.rejection_reason:
+                moderation_text = (
+                    "Модерация: НЕ пройдена🔴\n"
+                    f"Причина: {equipment.rejection_reason}"
+                )
+            else:
+                moderation_text = "Модерация: НЕ пройдена🔴"
         else:
             moderation_text = "Модерация: Ожидайте ⏳"
 
