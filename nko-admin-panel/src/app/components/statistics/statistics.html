@@ -3,12 +3,6 @@
   <div class="statistics-header">
     <h1>📊 Панель статистики</h1>
     <div class="controls">
-      <mat-slide-toggle 
-        [(ngModel)]="includeAdvanced" 
-        (change)="onIncludeAdvancedChange()"
-        color="primary">
-        Расширенная статистика
-      </mat-slide-toggle>
       <button 
         mat-raised-button 
         color="primary" 
@@ -158,7 +152,7 @@
     <!-- Популярное оборудование -->
     <mat-card class="table-card">
       <mat-card-header>
-        <mat-card-title>🔧 Популярное оборудование</mat-card-title>
+        <mat-card-title>🔧 Популярное оборудование (первые 10)</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <table mat-table [dataSource]="statistics.popular_items" class="full-width">

@@ -8,6 +8,7 @@ export interface Equipment {
   name: string;
   user_id: number;
   category_id: number;
+  category_name: string;
   status: string; // 'moderation' | 'approved' | 'rejected'
   description?: string;
   quantity: number;

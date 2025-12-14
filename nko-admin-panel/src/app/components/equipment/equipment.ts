@@ -47,7 +47,7 @@ export class EquipmentComponent implements OnInit {
   private dialog = inject(MatDialog);
   currentEquipment: Equipment | null = null;
   displayedColumns: string[] = [
-    'id', 'name', 'user_id', 'category_id', 'quantity', 
+    'id', 'name', 'user_id', 'category_name', 'quantity', 
     'status', 'created_at', 'actions'
   ];
   
