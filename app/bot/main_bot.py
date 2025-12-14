@@ -1275,7 +1275,7 @@ class MainBot:
 
     # ========== ОБЩИЕ ФУНКЦИИ ==========
 
-    async def _show_my_bookings(self, update: Update, user_id: int):
+    async def _show_my_bookings(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
         """Показывает бронирования пользователя"""
         async with AsyncSessionLocal() as session:
             user = await self.user_service.get_user_profile(session, user_id)
@@ -1289,8 +1289,26 @@ class MainBot:
 
         response = "📋 Ваши бронирования:\n\n"
         for booking in bookings:
+            equipment = self.equipment_service.get_equipment(session ,booking.equipment_id)
+            equipment.user_id
+            owner = self.user_service.get_user_by_id(session,equipment.user_id)
+
+            if owner and owner.tg_id:
+                    owner_tg_id = owner.tg_id
+                    try:
+                        tguser = await context.bot.get_chat(owner.tg_id)
+                        username = tguser.username
+                        if username:
+                            owner_info = f" @{username}"
+                        else:
+                            owner_info = " (username не указан)"
+                    except Exception:
+                        owner_info = " (профиль недоступен)"
+            else:
+                owner_info = " (владелец не указан)"
+                
             response += (
-                f"• ID {booking.id}: {booking.date_from:%d.%m.%Y} - {booking.date_to:%d.%m.%Y} | "
+                f"• ID {booking.id}: Название: {equipment.name} | Арендодатор - {owner_info} | {booking.date_from:%d.%m.%Y} - {booking.date_to:%d.%m.%Y} | "
                 f"Количество: {booking.quantity} | Статус: {booking.status.label}\n"
             )
 
