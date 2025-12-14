@@ -123,7 +123,7 @@ class MainBot:
             await self._check_lessor_and_show_equipment(update, user_id)
 
         elif message_text == "📋 Мои бронирования":
-            await self._show_my_bookings(update, user_id)
+            await self._show_my_bookings(update, context, user_id)
 
         else:
             await update.message.reply_text(
@@ -1252,9 +1252,8 @@ class MainBot:
 
         response = "📋 Ваши бронирования:\n\n"
         for booking in bookings:
-            equipment = self.equipment_service.get_equipment(session ,booking.equipment_id)
-            equipment.user_id
-            owner = self.user_service.get_user_by_id(session,equipment.user_id)
+            equipment = await self.equipment_service.get_equipment(session ,booking.equipment_id)
+            owner = await self.user_service.get_user_by_id(session,equipment.user_id)
 
             if owner and owner.tg_id:
                     owner_tg_id = owner.tg_id
