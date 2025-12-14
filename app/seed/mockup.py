@@ -26,7 +26,7 @@ USERS = [
     AppUser(
         id=2,
         name="Василий",
-        tg_id=2,  # был дубликат 1 — сделал уникальным
+        tg_id=2,
         phone_number="+79383316517",
         email="vasily@gmail.com",
         is_lessor=True,
@@ -49,16 +49,7 @@ USERS = [
         email="Ignat@gmail.com",
         is_lessor=False,
         score=4.9,
-    ),
-    AppUser(
-        id=5,
-        name="Матвей",
-        tg_id=789235294,
-        phone_number="+79093316515",
-        email="matvey@gmail.com",
-        is_lessor=True,
-        score=1,
-    ),
+    )
 ]
 
 # ---------- Категории ----------
@@ -170,7 +161,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=9,
         name="Диван двухместный",
-        user_id=USERS[4].id,
+        user_id=USERS[3].id,
         category_id=CATEGORIES[2]["id"],
         status=EquipmentStatus.MODERATION,
         description="Комфорт для лаунж-зоны или гримёрки.",
@@ -182,7 +173,7 @@ MOCK_EQUIPMENT = [
     Equipment(
         id=10,
         name="Световая стойка с диммером",
-        user_id=USERS[4].id,
+        user_id=USERS[3].id,
         category_id=CATEGORIES[1]["id"],
         status=EquipmentStatus.APPROVED,
         description="Стойка + диммерный блок на 4 канала.",

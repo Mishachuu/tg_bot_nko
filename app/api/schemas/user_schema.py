@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     email: Optional[str]
     phone_number: Optional[str]
     is_lessor: bool
+    score: float
     
     model_config = ConfigDict(from_attributes=True)
 

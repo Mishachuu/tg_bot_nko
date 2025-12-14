@@ -26,7 +26,7 @@ class StatisticsService:
         return [
             CategoryStats(
                 category_id=cat["category_id"],
-                category_name=f"Категория {cat['category_id']}",  # Заглушка
+                category_name=cat['category_name'],
                 equipment_count=cat["equipment_count"],
                 booking_count=cat["booking_count"]
             )

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from app.models.equipment import Equipment, EquipmentStatus
 from app.models.booking import Booking, BookingStatus
 from app.models.user_app import AppUser
+from app.models.category import Category
 
 class StatisticsRepository:
     
@@ -50,39 +51,43 @@ class StatisticsRepository:
         }
     
     @staticmethod
-    async def get_popular_categories(session: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_popular_categories(
+        session: AsyncSession,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Получить популярные категории"""
-        # Предполагаем, что у нас есть модель Category
-        # Если её нет, можно адаптировать под текущую структуру
-        
-        # Временная реализация - возвращаем категории с количеством оборудования
-        popular_categories_query = select(
-            Equipment.category_id,
-            func.count(Equipment.id).label('equipment_count'),
-            func.count(Booking.id).label('booking_count')
-        ).select_from(
-            Equipment
-        ).outerjoin(
-            Booking, Equipment.id == Booking.equipment_id
-        ).group_by(
-            Equipment.category_id
-        ).order_by(
-            func.count(Booking.id).desc(),
-            func.count(Equipment.id).desc()
-        ).limit(limit)
-        
+
+        popular_categories_query = (
+            select(
+                Category.id.label("category_id"),
+                Category.name.label("category_name"),
+                func.count(Equipment.id).label("equipment_count"),
+                func.count(Booking.id).label("booking_count"),
+            )
+            .select_from(Category)
+            .join(Equipment, Equipment.category_id == Category.id)
+            .outerjoin(Booking, Equipment.id == Booking.equipment_id)
+            .group_by(Category.id, Category.name)
+            .order_by(
+                func.count(Booking.id).desc(),
+                func.count(Equipment.id).desc(),
+            )
+            .limit(limit)
+        )
+
         result = await session.execute(popular_categories_query)
         categories_data = result.all()
-        
+
         return [
             {
                 "category_id": category_id,
+                "category_name": category_name,
                 "equipment_count": equipment_count,
-                "booking_count": booking_count
+                "booking_count": booking_count,
             }
-            for category_id, equipment_count, booking_count in categories_data
+            for category_id, category_name, equipment_count, booking_count in categories_data
         ]
-    
+
     @staticmethod
     async def get_popular_items(session: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
         """Получить популярное оборудование"""

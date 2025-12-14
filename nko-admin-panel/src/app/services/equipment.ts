@@ -8,6 +8,7 @@ export interface Equipment {
   name: string;
   user_id: number;
   category_id: number;
+  category_name: string;
   status: string; // 'moderation' | 'approved' | 'rejected'
   description?: string;
   quantity: number;
@@ -59,10 +60,19 @@ export class EquipmentService {
 
   constructor(private http: HttpClient) {}
 
-  getEquipment(skip: number = 0, limit: number = 100): Observable<EquipmentListResponse> {
+  getEquipment(
+    skip: number = 0,
+    limit: number = 100,
+    status?: string
+  ): Observable<EquipmentListResponse> {
+
     let params = new HttpParams()
       .set('skip', skip.toString())
       .set('limit', limit.toString());
+
+    if (status) {
+      params = params.set('status', status);
+    }
 
     return this.http.get<EquipmentListResponse>(this.baseUrl, { params });
   }

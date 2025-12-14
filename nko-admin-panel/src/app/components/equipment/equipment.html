@@ -57,10 +57,10 @@
           <td mat-cell *matCellDef="let equipment">{{ equipment.user_id }}</td>
         </ng-container>
 
-        <!-- Category ID Column -->
-        <ng-container matColumnDef="category_id">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Категория ID</th>
-          <td mat-cell *matCellDef="let equipment">{{ equipment.category_id }}</td>
+        <!-- Category Column -->
+        <ng-container matColumnDef="category_name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Категория</th>
+          <td mat-cell *matCellDef="let equipment">{{ equipment.category_name }}</td>
         </ng-container>
 
         <!-- Quantity Column -->
