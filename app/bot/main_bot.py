@@ -430,11 +430,11 @@ class MainBot:
         )
 
     async def _show_equipment_by_categories_and_date(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-        user_id: int,
-        data: dict,
+    self,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    user_id: int,
+    data: dict,
     ):
         """Показывает найденное оборудование с фото + кнопками бронирования"""
         async with AsyncSessionLocal() as session:
@@ -443,32 +443,24 @@ class MainBot:
             user_location = data.get("location")
             radius_km = data.get("radius_km", 30)
 
-            # текущий пользователь (чтобы знать, он ли владелец)
-            current_user: AppUser = await self.user_service.get_user_profile(
-                session, user_id
-            )
+            # текущий пользователь
+            current_user: AppUser = await self.user_service.get_user_profile(session, user_id)
 
+            # собираем оборудование по выбранным категориям
             for cat_id in data["selected_categories"]:
-                eqs = (
-                    await self.equipment_service.find_available_by_category_date_and_location(
-                        session,
-                        cat_id,
-                        data["date_from"],
-                        data["date_to"],
-                        user_location["lat"],
-                        user_location["lon"],
-                        radius_km,
-                    )
+                eqs = await self.equipment_service.find_available_by_category_date_and_location(
+                    session,
+                    cat_id,
+                    data["date_from"],
+                    data["date_to"],
+                    user_location["lat"],
+                    user_location["lon"],
+                    radius_km,
                 )
                 available_equipment.extend(eqs)
 
             if not available_equipment:
-                location_info = ""
-                if user_location:
-                    location_info = (
-                        f" в радиусе {radius_km} км от вашей локации"
-                    )
-
+                location_info = f" в радиусе {radius_km} км от вашей локации" if user_location else ""
                 await update.message.reply_text(
                     f"😔 Нет свободного оборудования на выбранные даты{location_info}.",
                     reply_markup=self._back_to_menu_keyboard(),
@@ -476,31 +468,19 @@ class MainBot:
                 await self._show_main_menu(update, user_id)
                 return
 
-            location_info = ""
-            if user_location:
-                location_info = f" в радиусе {radius_km} км от вас"
-
+            location_info = f" в радиусе {radius_km} км от вас" if user_location else ""
             await update.message.reply_text(
                 f"📦 Доступное оборудование{location_info} ({len(available_equipment)} позиций):",
                 reply_markup=ReplyKeyboardRemove(),
             )
 
+            # показываем по одному оборудованию
             for eq in available_equipment:
-                # Категория
-                category_name = await self._get_category_name(
-                    session, eq.category_id
-                )
+                category_name = await self._get_category_name(session, eq.category_id)
+                photos = await self.equipment_photo_service.list_photos(session, eq.id)
+                owner: AppUser = await self.user_service.get_user_by_id(session, eq.user_id)
 
-                # Фото
-                photos = await self.equipment_photo_service.list_photos(
-                    session, eq.id
-                )
-
-                # Владелец оборудования
-                owner: AppUser = await self.user_service.get_user_by_id(
-                    session, eq.user_id
-                )
-
+                owner_info = " (владелец не указан)"
                 owner_username = None
                 owner_tg_id = None
 
@@ -509,25 +489,21 @@ class MainBot:
                     try:
                         tguser = await context.bot.get_chat(owner.tg_id)
                         username = tguser.username
-                        if username:
-                            owner_username = username
-                            owner_info = f" @{username}"
-                        else:
-                            owner_info = " (username не указан)"
+                        owner_username = username
+                        owner_info = f" @{username}" if username else " (username не указан)"
                     except Exception:
                         owner_info = " (профиль недоступен)"
-                else:
-                    owner_info = " (владелец не указан)"
 
                 available_qty = await self.booking_service.get_available_quantity(
                     session, eq.id, data["date_from"], data["date_to"]
                 )
 
+                # формируем карточку безопасно
                 card_text = self.formatter.create_equipment_card(
-                    eq, owner_info, category_name,
-                    available_quantity=available_qty
+                    eq, owner_info, category_name, available_quantity=available_qty
                 )
 
+                # добавляем расстояние
                 if user_location and eq.latitude and eq.longitude:
                     distance = calculate_distance(
                         user_location["lat"],
@@ -537,43 +513,30 @@ class MainBot:
                     )
                     card_text += f"\n📍 Расстояние: {distance:.1f} км"
 
-                # клавиатура только если текущий пользователь не владелец
+                # клавиатура для не владельцев
                 reply_markup = None
                 if current_user and current_user.id != eq.user_id:
-                    reply_markup = self._build_equipment_inline_keyboard(
-                        eq.id,
-                        owner_tg_id=owner_tg_id,
-                        owner_username=owner_username,
-                    )
+                    kb = self._build_equipment_inline_keyboard(eq.id, owner_tg_id, owner_username)
+                    # защита от пустой клавиатуры
+                    if kb and getattr(kb, "inline_keyboard", None):
+                        reply_markup = kb
 
-                # Фото медиагруппой + карточка с кнопками/без кнопок
-                if photos:
-                    await self._send_equipment_with_photos(update, eq, None, photos)
-                    if reply_markup:
-                        await update.message.reply_text(
-                            card_text,
-                            parse_mode="Markdown",
-                            reply_markup=reply_markup,
-                        )
-                    else:
-                        await update.message.reply_text(
-                            card_text,
-                            parse_mode="Markdown",
-                        )
-                else:
-                    if reply_markup:
-                        await update.message.reply_text(
-                            card_text,
-                            parse_mode="Markdown",
-                            reply_markup=reply_markup,
-                        )
-                    else:
-                        await update.message.reply_text(
-                            card_text,
-                            parse_mode="Markdown",
-                        )
+                # отправка фото + текста
+                try:
+                    if photos:
+                        await self._send_equipment_with_photos(update, eq, None, photos)
+                    await update.message.reply_text(
+                        card_text[:4000],  # защита от слишком длинного текста
+                        parse_mode="Markdown",
+                        reply_markup=reply_markup,
+                    )
+                except Exception as e:
+                    # логируем, чтобы не падал
+                    import logging
+                    logging.exception(f"Ошибка при отправке оборудования {eq.id}: {e}")
 
             await self._show_main_menu(update, user_id)
+
 
     async def _send_photos_individually(
         self, update: Update, photos: list, caption: str

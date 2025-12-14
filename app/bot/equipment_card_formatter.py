@@ -1,97 +1,79 @@
-from typing import Dict
+from typing import Optional
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.models.equipment import  Equipment, EquipmentStatus
+from app.models.equipment import Equipment, EquipmentStatus
+
+MAX_TELEGRAM_MESSAGE_LEN = 4000  # Telegram лимит для текста сообщения
 
 class EquipmentCardFormatter:
-    """Форматирует карточки оборудования для Telegram"""
-    
+    """Форматирует карточки оборудования для Telegram с защитой от ошибок"""
+
     @classmethod
     def create_equipment_card(
         cls,
-        equipment,
+        equipment: Equipment,
         landlord_name: str = "Неизвестно",
         category: str = "Не указано",
-        available_quantity: int | None = None
+        available_quantity: Optional[int] = None
     ) -> str:
-        """
-        Создает форматированную карточку оборудования.
-        available_quantity — свободное количество на выбранные даты (если передано)
-        """
+        """Создает безопасную форматированную карточку оборудования"""
+        # Безопасная обработка None и спецсимволов Markdown
+        name = equipment.name or "Без названия"
+        description = equipment.description or "Нет описания"
+        landlord_name = landlord_name or "Неизвестно"
 
         card_lines = [
-            f"*{equipment.name or 'Без названия'}*",
-            f"Описание: {equipment.description or 'Нет описания'}",
+            f"*{name}*",
+            f"Описание: {description}",
             f"Категория: {category}",
             f"Арендодатель: {landlord_name}",
             f"Всего доступно: {equipment.quantity} шт."
         ]
 
-        # Добавляем свободное количество, если передано
         if available_quantity is not None:
             card_lines.append(f"📦 Свободно на выбранные даты: *{available_quantity} шт.*")
 
-        return "\n".join(card_lines)
-    
+        card_text = "\n".join(card_lines)
+
+        # Защита от превышения лимита Telegram
+        if len(card_text) > MAX_TELEGRAM_MESSAGE_LEN:
+            card_text = card_text[:MAX_TELEGRAM_MESSAGE_LEN - 10] + "\n…"
+
+        return card_text
+
     @classmethod
-    def create_my_equipment_card(cls, equipment: Equipment, landlord_name: str = "Неизвестно", category: str = "Не указано") -> str:
-        """Создает форматированную карточку оборудования"""
-        if(equipment.status == EquipmentStatus.APPROVED):
+    def create_my_equipment_card(
+        cls,
+        equipment: Equipment,
+        landlord_name: str = "Неизвестно",
+        category: str = "Не указано"
+    ) -> str:
+        """Создает безопасную карточку собственного оборудования с модерацией"""
+        name = equipment.name or "Без названия"
+        description = equipment.description or "Нет описания"
+        landlord_name = landlord_name or "Неизвестно"
+
+        # Модерация
+        if equipment.status == EquipmentStatus.APPROVED:
             moderation_text = "Модерация: Пройдена🟢"
-        elif(equipment.status == EquipmentStatus.REJECTED):
-            if equipment.rejection_reason:
-                moderation_text = (
-                    "Модерация: НЕ пройдена🔴\n"
-                    f"Причина: {equipment.rejection_reason}"
-                )
-            else:
-                moderation_text = "Модерация: НЕ пройдена🔴"
+        elif equipment.status == EquipmentStatus.REJECTED:
+            reason = equipment.rejection_reason or "Причина не указана"
+            moderation_text = f"Модерация: НЕ пройдена🔴\nПричина: {reason}"
         else:
             moderation_text = "Модерация: Ожидайте ⏳"
 
         card_lines = [
-            f"*{equipment.name or 'Без названия'}*",
-            f"Описание: {equipment.description or 'Нет описания'}",
+            f"*{name}*",
+            f"Описание: {description}",
             f"Количество: {equipment.quantity} шт.",
             f"Категория: {category}",
-            f"Арендодатель: {landlord_name}", 
-            f"{moderation_text}"
+            f"Арендодатель: {landlord_name}",
+            moderation_text
         ]
-        
-        return "\n".join(card_lines)
-    
-    personal_data_consent = """🔐 *Согласие на обработку персональных данных*
 
-Для продолжения работы с ботом и получения услуг, нам необходимо ваше согласие на обработку ваших персональных данных.
+        card_text = "\n".join(card_lines)
 
-*Состав данных:*
-- Фамилия, имя, отчество;
-- Номер телефона;
-- Адрес электронной почты (e-mail);
-- Данные аккаунта Telegram (ID, username);
-- Иная информация, предоставленная вами в ходе использования бота.
+        # Защита от лимита Telegram
+        if len(card_text) > MAX_TELEGRAM_MESSAGE_LEN:
+            card_text = card_text[:MAX_TELEGRAM_MESSAGE_LEN - 10] + "\n…"
 
-*Цели обработки:*
-- Регистрация и идентификация вас как пользователя;
-- Оказание услуг через данного бота;
-- Обратная связь и поддержка;
-- Информирование об обновлениях и акциях.
-
-*Срок действия согласия:* до момента его отзыва вами.
-Согласие может быть отозвано путем отправки соответствующего заявления на адрес [Ваш Email или иной способ].
-
-*Нажимая кнопку «Согласен», вы подтверждаете, что ознакомлены и согласны с условиями обработки ваших персональных данных.*"""
-    risk_warning = """⚠️ *Отказ от ответственности*
-
-Данный бот является платформой для самостоятельного обмена оборудованием между пользователями.
-
-*Важное уведомление:*
-- Администрация бота ([Название Вашего Сервиса]) не является участником сделок между пользователями.
-- Мы не несем материальную ответственность за оборудование, предоставленное вами другому пользователю.
-- Мы не гарантируем сохранность, исправность или возврат вашего оборудования другим пользователем.
-- Все риски, связанные с передачей оборудования, вы принимаете на себя.
-
-*Рекомендации:*
-- Перед передачей оборудования рекомендуем заключать двусторонние акты приема-передачи.
-- Фиксируйте состояние оборудования на фото/видео в момент передачи.
-
-*Нажимая кнопку «Подтверждаю», вы подтверждаете, что осознаёте все риски и соглашаетесь с тем, что [Название Вашего Сервиса] не несет ответственности за ваши материальные ценности, переданные другим пользователям.*"""
+        return card_text

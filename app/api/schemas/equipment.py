@@ -17,6 +17,7 @@ class EquipmentResponse(BaseModel):
     name: str
     user_id: int
     category_id: int
+    category_name: str
     status: EquipmentStatus
     description: Optional[str]
     quantity: int

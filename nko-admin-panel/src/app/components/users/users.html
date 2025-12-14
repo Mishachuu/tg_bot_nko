@@ -73,11 +73,12 @@
           <td mat-cell *matCellDef="let user">
             <mat-chip-set>
               <mat-chip [color]="user.score && user.score >= 4 ? 'primary' : 'warn'">
-                {{ user.score || 0 }}
+                {{ (user.score ?? 0) | number:'1.1-1' }}
               </mat-chip>
             </mat-chip-set>
           </td>
         </ng-container>
+
 
         <!-- Lessor Status Column -->
         <ng-container matColumnDef="is_lessor">
@@ -114,16 +115,6 @@
                   <span>Назначить арендодателем</span>
                 </button>
               }
-              
-              <button mat-menu-item (click)="editUser(user)">
-                <mat-icon>edit</mat-icon>
-                <span>Редактировать</span>
-              </button>
-              
-              <button mat-menu-item (click)="deleteUser(user.id!)" class="delete-action">
-                <mat-icon color="warn">delete</mat-icon>
-                <span>Удалить</span>
-              </button>
             </mat-menu>
           </td>
         </ng-container>

@@ -1,7 +1,7 @@
 from enum import Enum
 from datetime import datetime
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Enum as SQLEnum, ForeignKey
 from app.db.base import Base
 
 class EquipmentStatus(Enum):
@@ -15,7 +15,18 @@ class Equipment(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=True)
     user_id: Mapped[int] = mapped_column(nullable=False)
-    category_id: Mapped[int] = mapped_column(nullable=True)
+
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id"),
+        nullable=True
+    )
+
+    category: Mapped["Category"] = relationship("Category", lazy="joined")
+
+    @property
+    def category_name(self) -> str | None:
+        return self.category.name if self.category else None
+
     status: Mapped[str] = mapped_column(
         SQLEnum(EquipmentStatus), 
         default=EquipmentStatus.MODERATION,
@@ -45,6 +56,7 @@ class Equipment(Base):
             "name": self.name,
             "user_id": self.user_id,
             "category_id": self.category_id,
+            "category_name": self.category.name if self.category else None,
             "status": self.status.value,
             "display_status": self.display_status,
             "description": self.description,

@@ -36,8 +36,20 @@ class EquipmentService:
     async def get_equipment(self, session: AsyncSession, equipment_id: int) -> Optional[Equipment]:
         return await self._repo.get_by_id(session, equipment_id)
 
-    async def list_equipment(self, session: AsyncSession, *, limit: int = 100, offset: int = 0) -> List[Equipment]:
-        return await self._repo.get_all(session, limit=limit, offset=offset)
+    async def list_equipment(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        status: Optional[EquipmentStatus] = None
+    ) -> List[Equipment]:
+        return await self._repo.get_all(
+            session,
+            limit=limit,
+            offset=offset,
+            status=status
+        )
 
     async def update_equipment(self, session: AsyncSession, equipment_id: int, **fields) -> Optional[Equipment]:
         """
@@ -189,8 +201,16 @@ class EquipmentService:
         )
         return await self.create_equipment(session, equipment)
 
-    async def get_total_count(self, session: AsyncSession) -> int:
-        return await self._repo.get_total_count(session)
+    async def get_total_count(
+        self,
+        session: AsyncSession,
+        *,
+        status: Optional[EquipmentStatus] = None
+    ) -> int:
+        return await self._repo.get_total_count(
+            session,
+            status=status
+        )
 
     async def get_equipment_by_status(
         self, 

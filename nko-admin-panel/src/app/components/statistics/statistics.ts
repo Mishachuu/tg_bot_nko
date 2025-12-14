@@ -35,7 +35,7 @@ export class StatisticsComponent implements OnInit {
   statistics: any = null;
   loading = false;
   error: string | null = null;
-  includeAdvanced = false;
+  includeAdvanced = true;
 
   // Колонки для таблиц
   categoryColumns: string[] = ['name', 'equipment', 'bookings'];
