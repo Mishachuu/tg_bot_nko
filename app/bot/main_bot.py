@@ -23,9 +23,18 @@ from app.services.user_service import UserService
 from app.repositories.category_repository import CategoryRepository
 from app.bot.equipment_card_formatter import EquipmentCardFormatter
 from app.helpers.gis_helper import calculate_distance
+from app.bot.handlers.search import SearchHandler
+from app.bot.handlers.equipment import EquipmentHandler
+from app.bot.handlers.booking import BookingHandler
+from app.bot.state import UserState
+from app.bot.helpers import get_owner_info, get_category_name
 from datetime import datetime
+from app.bot.inline_calendar import month_keyboard, parse_calendar_callback, clamp_date
+import logging
 from app.models.user_app import AppUser
 from app.models.enums import BookingStatus
+import unicodedata
+from typing import Optional
 
 import io
 
@@ -48,7 +57,17 @@ class MainBot:
         self.equipment_photo_service = equipment_photo_service
         self.formatter = EquipmentCardFormatter()
 
-        self.user_states = {}
+        # handlers
+        self.search_handler = SearchHandler(
+            category_service, equipment_service, equipment_photo_service, user_service, booking_service, self.formatter
+        )
+        self.equipment_handler = EquipmentHandler(
+            user_service, equipment_service, equipment_photo_service, category_service, self.formatter
+        )
+        self.booking_handler = BookingHandler(booking_service, equipment_service, user_service, None)
+
+        self.user_states: dict[int, UserState] = {}
+        self.logger = logging.getLogger(__name__)
         self.SEARCH_STATES = {
             "ASKING_LOCATION": "asking_location",
             "ASKING_RADIUS": "asking_radius",
@@ -81,9 +100,17 @@ class MainBot:
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Главный обработчик всех сообщений"""
         user_id = update.effective_user.id
-        message_text = update.message.text.strip()
+        # Telegram-клиенты и сервер могут по-разному передавать emoji (variation selector / ZWJ).
+        # Поэтому для сравнения команд меню используем нормализованный текст.
+        raw_text = (update.message.text or "").strip()
+        message_text = self._normalize_menu_text(raw_text)
 
-        if message_text == "⬅️ В главное меню":
+        if message_text in {
+            self._normalize_menu_text("⬅️ В главное меню"),
+            self._normalize_menu_text("↩️ В меню"),
+            self._normalize_menu_text("⬅️ Назад"),
+            self._normalize_menu_text("❌ Отмена"),
+        }:
             self.user_states.pop(user_id, None)
             await self._show_main_menu(update, user_id)
             return
@@ -97,7 +124,7 @@ class MainBot:
             return
 
         # Если пользователь зарегистрирован, обрабатываем команды
-        await self._handle_commands(update, context, user_id, message_text)
+        await self._handle_commands(update, context, user_id, message_text, raw_text=raw_text)
 
     async def _handle_commands(
         self,
@@ -105,6 +132,7 @@ class MainBot:
         context: ContextTypes.DEFAULT_TYPE,
         user_id: int,
         message_text: str,
+        raw_text: Optional[str] = None,
     ):
         """Обработка команд после регистрации"""
         # Проверяем, находится ли пользователь в каком-либо состоянии
@@ -112,23 +140,40 @@ class MainBot:
             await self._handle_states(update, context, user_id, message_text)
             return
 
-        # Обработка основных команд меню
-        if message_text == "🔍 Найти оборудование":
+        # Обработка основных команд меню (через нормализованный текст)
+        menu_actions = {
+            self._normalize_menu_text("🔍 Найти оборудование"): "search",
+            self._normalize_menu_text("➕ Добавить оборудование"): "add_equipment",
+            self._normalize_menu_text("🛠️ Моё оборудование"): "my_equipment",
+            self._normalize_menu_text("📋 Мои бронирования"): "my_bookings",
+            self._normalize_menu_text("📦 Забронировано у меня"): "owner_bookings",
+        }
+
+        action = menu_actions.get(message_text)
+        if action == "search":
             await self._start_search_flow(update, context, user_id)
-
-        elif message_text == "➕ Добавить оборудование":
+            return
+        if action == "add_equipment":
             await self._check_lessor_and_start_equipment_flow(update, user_id)
-
-        elif message_text == "🛠️ Моё оборудование":
+            return
+        if action == "my_equipment":
             await self._check_lessor_and_show_equipment(update, user_id)
-
-        elif message_text == "📋 Мои бронирования":
+            return
+        if action == "my_bookings":
             await self._show_my_bookings(update, context, user_id)
+            return
+        if action == "owner_bookings":
+            await self._show_owner_bookings(update, context, user_id)
+            return
 
-        else:
-            await update.message.reply_text(
-                "Не понял команду. Используйте кнопки меню."
-            )
+        # Диагностический лог: поможет поймать несовпадение текста кнопок между клиентами
+        self.logger.warning(
+            "Unhandled menu command: normalized=%r raw=%r user_id=%s",
+            message_text,
+            raw_text if raw_text is not None else (update.message.text if update.message else None),
+            user_id,
+        )
+        await update.message.reply_text("Не понял команду. Используйте кнопки меню.")
 
     async def _handle_registration(
         self, update: Update, user_id: int, message_text: str
@@ -201,11 +246,18 @@ class MainBot:
         user_id: int,
         message_text: str,
     ):
-        if message_text == "🔁 Повторить ввод":
+        message_text = self._normalize_menu_text(message_text)
+
+        if message_text == self._normalize_menu_text("🔁 Повторить ввод"):
             await self._repeat_last_question(update, user_id)
             return
 
-        if message_text == "↩️ В меню":
+        if message_text in {
+            self._normalize_menu_text("↩️ В меню"),
+            self._normalize_menu_text("⬅️ В главное меню"),
+            self._normalize_menu_text("⬅️ Назад"),
+            self._normalize_menu_text("❌ Отмена"),
+        }:
             self.user_states.pop(user_id, None)
             await self._show_main_menu(update, user_id)
             return
@@ -281,7 +333,8 @@ class MainBot:
         }
 
         location_keyboard = [
-            [KeyboardButton("📍 Отправить локацию", request_location=True)]
+            [KeyboardButton("📍 Отправить локацию", request_location=True)],
+            [KeyboardButton("⬅️ Назад")],
         ]
         await update.message.reply_text(
             "📍 Для поиска оборудования отправьте вашу локацию:",
@@ -320,7 +373,7 @@ class MainBot:
             except ValueError:
                 await update.message.reply_text(
                     "⚠️ Введите число километров, например 15:",
-                    reply_markup=self._back_to_menu_keyboard()
+                    reply_markup=self._cancel_keyboard(),
                 )
 
         elif state == self.SEARCH_STATES["CHOOSING_CATEGORIES"]:
@@ -333,9 +386,14 @@ class MainBot:
                 self.user_states[user_id]["state"] = self.SEARCH_STATES[
                     "ENTERING_DATE_FROM"
                 ]
-                await update.message.reply_text(
-                    "Введите дату начала аренды (ДД.ММ.ГГГГ):"
+                # show inline calendar for date_from
+                kb = month_keyboard(
+                    datetime.now().year,
+                    datetime.now().month,
+                    clamp_date(datetime.today().date()),
+                    clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)),
                 )
+                await update.message.reply_text("📅 Выберите дату начала аренды:", reply_markup=kb)
             else:
                 await self._toggle_category_selection(update, message_text, data)
 
@@ -345,9 +403,13 @@ class MainBot:
                 self.user_states[user_id]["state"] = self.SEARCH_STATES[
                     "ENTERING_DATE_TO"
                 ]
-                await update.message.reply_text(
-                    "Введите дату окончания аренды (ДД.ММ.ГГГГ):"
+                kb = month_keyboard(
+                    datetime.now().year,
+                    datetime.now().month,
+                    clamp_date(datetime.today().date()),
+                    clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)),
                 )
+                await update.message.reply_text("📅 Выберите дату окончания аренды:", reply_markup=kb)
             except ValueError:
                 await update.message.reply_text(
                     "⚠️ Неверный формат. Введите дату как ДД.ММ.ГГГГ.",
@@ -393,6 +455,7 @@ class MainBot:
             keyboard.append([display_name])
 
         keyboard.append(["🔍 Найти"])
+        keyboard.append(["⬅️ Назад"])
 
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.message.reply_text(
@@ -592,7 +655,7 @@ class MainBot:
         }
         await update.message.reply_text(
             "📝 Введите название оборудования:",
-            reply_markup=ReplyKeyboardRemove(),
+            reply_markup=self._cancel_keyboard(),
         )
 
     async def _check_lessor_and_show_equipment(
@@ -696,21 +759,38 @@ class MainBot:
             media_group = []
 
             for i, photo_data in enumerate(photos):
-                photo_content = photo_data.get("content")
-
-                if photo_content:
-                    if isinstance(photo_content, memoryview):
-                        photo_content = photo_content.tobytes()
-
-                    media = InputMediaPhoto(
-                        media=photo_content,
-                        caption=card_text if i == 0 and card_text else None,
-                    )
-                    media_group.append(media)
+                # normalize photo content from different possible shapes
+                photo_content = None
+                if isinstance(photo_data, dict):
+                    # services may return {'content': bytes} or {'photo_data': ..., 'content': ...}
+                    photo_content = photo_data.get("content") or photo_data.get("photo_data")
                 else:
-                    print(
-                        f"⚠️ Нет content для фото {photo_data.get('id')} оборудования {equipment.id}"
-                    )
+                    # could be an object with attributes
+                    photo_content = getattr(photo_data, "content", None) or getattr(photo_data, "photo_data", None)
+
+                if photo_content is None:
+                    print(f"⚠️ Нет content для фото (entry={photo_data}) оборудования {getattr(equipment,'id', '?')}")
+                    continue
+
+                # memoryview -> bytes
+                if isinstance(photo_content, memoryview):
+                    photo_content = photo_content.tobytes()
+
+                # if stored as bytes-like, keep; if stored as base64 str, try decode
+                if isinstance(photo_content, str):
+                    try:
+                        import base64
+
+                        photo_content = base64.b64decode(photo_content)
+                    except Exception:
+                        # leave as-is; InputMediaPhoto may accept URLs but we prefer bytes
+                        pass
+
+                media = InputMediaPhoto(
+                    media=photo_content,
+                    caption=card_text if i == 0 and card_text else None,
+                )
+                media_group.append(media)
 
             if media_group:
                 await update.message.reply_media_group(media=media_group)
@@ -750,7 +830,8 @@ class MainBot:
                 "ADD_DESCRIPTION"
             ]
             await update.message.reply_text(
-                "✍️ Введите описание оборудования:"
+                "✍️ Введите описание оборудования:",
+                reply_markup=self._cancel_keyboard(),
             )
 
         elif state == self.EQUIPMENT_STATES["ADD_DESCRIPTION"]:
@@ -771,7 +852,8 @@ class MainBot:
                 ]
 
                 location_keyboard = [
-                    [KeyboardButton("📍 Отправить локацию", request_location=True)]
+                    [KeyboardButton("📍 Отправить локацию", request_location=True)],
+                    [KeyboardButton("⬅️ Назад")],
                 ]
                 await update.message.reply_text(
                     "📍 Отправьте локацию, откуда можно забрать оборудование:",
@@ -781,7 +863,8 @@ class MainBot:
                 )
             except ValueError:
                 await update.message.reply_text(
-                    "❌ Введите корректное количество (число больше 0):"
+                    "❌ Введите корректное количество (число больше 0):",
+                    reply_markup=self._cancel_keyboard(),
                 )
 
         elif state == self.EQUIPMENT_STATES["ADD_PHOTOS"]:
@@ -934,7 +1017,7 @@ class MainBot:
 
             await update.message.reply_text(
                 "📏 Укажите радиус поиска в километрах (по умолчанию 30 км):",
-                reply_markup=ReplyKeyboardRemove(),
+                reply_markup=self._cancel_keyboard(),
             )
 
         elif (
@@ -956,7 +1039,7 @@ class MainBot:
                 "📸 Теперь отправьте фотографии оборудования (можно несколько).\n"
                 "Когда закончите, нажмите 'Готово'.",
                 reply_markup=ReplyKeyboardMarkup(
-                    [["Готово"]], resize_keyboard=True
+                    [["Готово"], ["⬅️ Назад"]], resize_keyboard=True
                 ),
             )
 
@@ -999,6 +1082,7 @@ class MainBot:
             return
 
         keyboard = [[category.name] for category in categories]
+        keyboard.append(["⬅️ Назад"])
 
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.message.reply_text(
@@ -1276,6 +1360,31 @@ class MainBot:
 
         await update.message.reply_text(response)
 
+    async def _show_owner_bookings(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
+        """Показывает все бронирования на оборудование арендодателя"""
+        async with AsyncSessionLocal() as session:
+            user = await self.user_service.get_user_profile(session, user_id)
+            if not user.is_lessor:
+                await update.message.reply_text("❌ Вы не арендодатель.")
+                return
+
+            bookings = await self.booking_service.get_owner_bookings(session, user.id)
+
+        if not bookings:
+            await update.message.reply_text("У вас пока нет заявок на бронирование.")
+            return
+
+        response = "📦 Бронирования на ваше оборудование:\n\n"
+        for b in bookings:
+            equipment = await self.equipment_service.get_equipment(session, b.equipment_id)
+            renter = await self.user_service.get_user_by_id(session, b.user_id)
+            renter_info = renter.name or f"tg:{renter.tg_id}"
+            response += (
+                f"• ID {b.id}: Оборудование: {equipment.name} | Арендатор: {renter_info} | {b.date_from:%d.%m.%Y} - {b.date_to:%d.%m.%Y} | Кол-во: {b.quantity} | Статус: {b.status.label}\n"
+            )
+
+        await update.message.reply_text(response)
+
     async def _show_main_menu(
         self, update: Update, user_id: int, message: str = ""
     ):
@@ -1288,6 +1397,7 @@ class MainBot:
             menu_buttons = [
                 ["🔍 Найти оборудование"],
                 ["➕ Добавить оборудование", "🛠️ Моё оборудование"],
+                ["📦 Забронировано у меня"],
                 ["📋 Мои бронирования"],
             ]
         else:
@@ -1298,7 +1408,9 @@ class MainBot:
 
         reply_markup = ReplyKeyboardMarkup(menu_buttons, resize_keyboard=True)
         text = message or "Выберите действие:"
-        await update.message.reply_text(text, reply_markup=reply_markup)
+        msg = update.message or (update.callback_query.message if update.callback_query else None)
+        if msg:
+            await msg.reply_text(text, reply_markup=reply_markup)
 
     async def handle_contact(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1343,9 +1455,108 @@ class MainBot:
             }
 
             await query.edit_message_reply_markup(reply_markup=None)
-            await query.message.reply_text(
-                "📅 Введите дату начала аренды в формате ДД.ММ.ГГГГ:"
+            kb = month_keyboard(
+                datetime.now().year,
+                datetime.now().month,
+                clamp_date(datetime.today().date()),
+                clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)),
             )
+            await query.message.reply_text("📅 Выберите дату начала аренды:", reply_markup=kb)
+            return
+
+        # inline calendar callbacks
+        if callback_data.startswith("cal_"):
+            action, payload = parse_calendar_callback(callback_data)
+            state_entry = self.user_states.get(user_id)
+            if not state_entry:
+                await query.answer("Сессия неактивна", show_alert=True)
+                return
+            state = state_entry["state"]
+            data = state_entry["data"]
+
+            if action == "cancel":
+                self.user_states.pop(user_id, None)
+                try:
+                    await query.message.edit_reply_markup(reply_markup=None)
+                except Exception:
+                    pass
+                await query.message.reply_text("Действие отменено.", reply_markup=self._cancel_keyboard())
+                await self._show_main_menu(update, user_id)
+                await query.answer()
+                return
+
+            if action == "select":
+                # payload is ISO date
+                try:
+                    # payload comes as dd.mm.yyyy from inline_calendar callbacks
+                    sel_date = datetime.strptime(payload, "%d.%m.%Y").date()
+                except Exception:
+                    await query.answer()
+                    return
+
+                # booking flow
+                if state == self.BOOKING_STATES["ENTERING_DATE_FROM"]:
+                    data["date_from"] = datetime(sel_date.year, sel_date.month, sel_date.day)
+                    self.user_states[user_id]["state"] = self.BOOKING_STATES["ENTERING_DATE_TO"]
+                    await query.message.reply_text(
+                        "📅 Теперь выберите дату окончания:",
+                        reply_markup=month_keyboard(
+                            sel_date.year,
+                            sel_date.month,
+                            clamp_date(sel_date),
+                            clamp_date(sel_date.replace(year=sel_date.year + 2)),
+                        ),
+                    )
+                    await query.answer()
+                    return
+
+                if state == self.BOOKING_STATES["ENTERING_DATE_TO"]:
+                    data["date_to"] = datetime(sel_date.year, sel_date.month, sel_date.day)
+                    # proceed to quantity step
+                    self.user_states[user_id]["state"] = self.BOOKING_STATES["ENTERING_QUANTITY"]
+                    async with AsyncSessionLocal() as session:
+                        available_qty = await self.booking_service.get_available_quantity(session, data["equipment_id"], data["date_from"], data["date_to"])
+                    await query.message.reply_text(f"📦 Введите количество единиц (свободно: {available_qty}):", reply_markup=self._back_to_menu_keyboard())
+                    await query.answer()
+                    return
+
+                # search flow
+                if state == self.SEARCH_STATES["ENTERING_DATE_FROM"]:
+                    data["date_from"] = datetime(sel_date.year, sel_date.month, sel_date.day)
+                    self.user_states[user_id]["state"] = self.SEARCH_STATES["ENTERING_DATE_TO"]
+                    await query.message.reply_text(
+                        "📅 Теперь выберите дату окончания:",
+                        reply_markup=month_keyboard(
+                            sel_date.year,
+                            sel_date.month,
+                            clamp_date(sel_date),
+                            clamp_date(sel_date.replace(year=sel_date.year + 2)),
+                        ),
+                    )
+                    await query.answer()
+                    return
+
+                if state == self.SEARCH_STATES["ENTERING_DATE_TO"]:
+                    data["date_to"] = datetime(sel_date.year, sel_date.month, sel_date.day)
+                    await query.message.reply_text("🔍 Ищу оборудование по выбранным датам...", reply_markup=ReplyKeyboardRemove())
+                    await self._show_equipment_by_categories_and_date(query, context, user_id, data)
+                    del self.user_states[user_id]
+                    await query.answer()
+                    return
+
+            elif action in ("prev", "next", "today"):
+                # navigation: payload like '2025-11' for prev/next
+                if action == "today":
+                    y = datetime.now().year
+                    m = datetime.now().month
+                else:
+                    parts = payload.split("-")
+                    y = int(parts[0])
+                    m = int(parts[1]) if len(parts) > 1 else 1
+                kb = month_keyboard(y, m, clamp_date(datetime.today().date()), clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)))
+                await query.message.edit_reply_markup(reply_markup=kb)
+                await query.answer()
+                return
 
         elif callback_data.startswith("ask_"):
             equipment_id = int(callback_data.split("_")[1])
@@ -1443,6 +1654,10 @@ class MainBot:
             CallbackQueryHandler(
                 self.handle_callback, pattern=r"^(book_|ask_|booking_)"
             ),
+            # separate handler registration for calendar callbacks so they are delivered
+            CallbackQueryHandler(
+                self.handle_callback, pattern=r"^cal_"
+            ),
             MessageHandler(
                 filters.PHOTO & ~filters.COMMAND, self.handle_equipment_photo
             ),
@@ -1460,11 +1675,31 @@ class MainBot:
             resize_keyboard=True
         )
 
+    def _cancel_keyboard(self):
+        """Универсальная кнопка отмены (возврат в главное меню)."""
+        return ReplyKeyboardMarkup(
+            [["⬅️ Назад"]],
+            resize_keyboard=True,
+        )
+
     def _retry_keyboard(self):
         return ReplyKeyboardMarkup(
             [["🔁 Повторить ввод"], ["↩️ В меню"]],
             resize_keyboard=True
         )
+
+    def _normalize_menu_text(self, text: str) -> str:
+        """Нормализует текст команд/кнопок, чтобы сравнения не ломались из-за emoji.
+
+        Telegram может удалить/добавить variation selector (U+FE0F) и/или ZWJ (U+200D),
+        поэтому любые сравнения кнопок делаем по нормализованной строке.
+        """
+        if text is None:
+            return ""
+        # NFKC + удаляем частые невидимые символы, влияющие на emoji-представление.
+        t = unicodedata.normalize("NFKC", text)
+        t = t.replace("\uFE0F", "").replace("\u200D", "")
+        return t.strip()
 
     async def _repeat_last_question(self, update: Update, user_id: int):
         """Повторяет последний вопрос в зависимости от активного состояния."""
