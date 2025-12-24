@@ -584,15 +584,16 @@ class MainBot:
                     if kb and getattr(kb, "inline_keyboard", None):
                         reply_markup = kb
 
-                # отправка фото + текста
+                # отправка фото + текста: объединяем в один медиагрупп (текст в подписи к первому фото)
                 try:
                     if photos:
-                        await self._send_equipment_with_photos(update, eq, None, photos)
-                    await update.message.reply_text(
-                        card_text[:4000],  # защита от слишком длинного текста
-                        parse_mode="Markdown",
-                        reply_markup=reply_markup,
-                    )
+                        await self._send_equipment_with_photos(update, eq, card_text[:4000], photos, reply_markup=reply_markup)
+                    else:
+                        await update.message.reply_text(
+                            card_text[:4000],  # защита от слишком длинного текста
+                            parse_mode="Markdown",
+                            reply_markup=reply_markup,
+                        )
                 except Exception as e:
                     # логируем, чтобы не падал
                     import logging
@@ -696,13 +697,9 @@ class MainBot:
                 equipment, f"Вы (ID: {user.id})", category_name
             )
 
-            # ВЛАДЕЛЕЦ смотрит своё оборудование — никаких кнопок бронирования
+            # ВЛАДЕЛЕЦ смотрит своё оборудование — объединяем фото и текст в одно сообщение
             if photos:
-                await self._send_equipment_with_photos(update, equipment, None, photos)
-                await update.message.reply_text(
-                    card_text,
-                    parse_mode="Markdown",
-                )
+                await self._send_equipment_with_photos(update, equipment, card_text, photos, reply_markup=None)
             else:
                 await update.message.reply_text(
                     card_text,
@@ -721,36 +718,12 @@ class MainBot:
         Если username нет, но есть tg_id — пробуем tg://user?id=...
         Если ничего нет — fallback на callback ask_...
         """
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "📅 Забронировать",
-                    callback_data=f"book_{equipment_id}",
-                )
-            ]
-        ]
-
-        if owner_username:
-            ask_button = InlineKeyboardButton(
-                "💬 Задать вопрос",
-                url=f"https://t.me/{owner_username}",
-            )
-        elif owner_tg_id:
-            ask_button = InlineKeyboardButton(
-                "💬 Задать вопрос",
-                url=f"tg://user?id={owner_tg_id}",
-            )
-        else:
-            ask_button = InlineKeyboardButton(
-                "💬 Задать вопрос",
-                callback_data=f"ask_{equipment_id}",
-            )
-
-        keyboard.append([ask_button])
+        # Only show single "Book" button. Do not include 'ask' button.
+        keyboard = [[InlineKeyboardButton("📅 Забронировать", callback_data=f"book_{equipment_id}")]]
         return InlineKeyboardMarkup(keyboard)
 
     async def _send_equipment_with_photos(
-        self, update: Update, equipment, card_text, photos: list
+        self, update: Update, equipment, card_text, photos: list, reply_markup=None
     ):
         """Отправляет оборудование с фото медиагруппой.
         card_text можно передать None, если карточка отправляется отдельным сообщением.
@@ -793,11 +766,28 @@ class MainBot:
                 media_group.append(media)
 
             if media_group:
-                await update.message.reply_media_group(media=media_group)
+                # send all photos as a media_group (caption on the first item)
+                try:
+                    sent_msgs = await update.message.reply_media_group(media=media_group)
+                except Exception:
+                    sent_msgs = None
+
+                # Try to attach inline keyboard to the first message of the media_group by editing its reply_markup.
+                if reply_markup and sent_msgs:
+                    try:
+                        first_msg = sent_msgs[0]
+                        await first_msg.edit_reply_markup(reply_markup=reply_markup)
+                    except Exception:
+                        # fallback: send a separate short visible label with keyboard (best-effort)
+                        try:
+                            label = getattr(equipment, "name", "") or ""
+                            await update.message.reply_text(label, reply_markup=reply_markup)
+                        except Exception:
+                            pass
             else:
                 if card_text:
                     await update.message.reply_text(
-                        card_text, parse_mode="Markdown"
+                        card_text, parse_mode="Markdown", reply_markup=reply_markup
                     )
 
         except Exception as e:
@@ -1454,12 +1444,25 @@ class MainBot:
                 },
             }
 
-            await query.edit_message_reply_markup(reply_markup=None)
+            # Do not remove the inline keyboard here — keep the "📅 Забронировать" button visible
+            # compute unavailable dates for this equipment in the visible month
+            unavailable = set()
+            async with AsyncSessionLocal() as session:
+                for d in range(1, 32):
+                    try:
+                        candidate = datetime(datetime.now().year, datetime.now().month, d).date()
+                    except Exception:
+                        break
+                    aq = await self.booking_service.get_available_quantity(session, equipment_id, datetime(candidate.year, candidate.month, candidate.day), datetime(candidate.year, candidate.month, candidate.day))
+                    if aq <= 0:
+                        unavailable.add(candidate)
+
             kb = month_keyboard(
                 datetime.now().year,
                 datetime.now().month,
                 clamp_date(datetime.today().date()),
                 clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)),
+                unavailable_dates=unavailable,
             )
             await query.message.reply_text("📅 Выберите дату начала аренды:", reply_markup=kb)
             return
@@ -1498,6 +1501,18 @@ class MainBot:
                 if state == self.BOOKING_STATES["ENTERING_DATE_FROM"]:
                     data["date_from"] = datetime(sel_date.year, sel_date.month, sel_date.day)
                     self.user_states[user_id]["state"] = self.BOOKING_STATES["ENTERING_DATE_TO"]
+                    # show date_to calendar with unavailable dates marked
+                    unavailable = set()
+                    async with AsyncSessionLocal() as session:
+                        for d in range(1, 32):
+                            try:
+                                candidate = datetime(sel_date.year, sel_date.month, d).date()
+                            except Exception:
+                                break
+                            aq = await self.booking_service.get_available_quantity(session, data["equipment_id"], datetime(candidate.year, candidate.month, candidate.day), datetime(candidate.year, candidate.month, candidate.day))
+                            if aq <= 0:
+                                unavailable.add(candidate)
+
                     await query.message.reply_text(
                         "📅 Теперь выберите дату окончания:",
                         reply_markup=month_keyboard(
@@ -1505,6 +1520,7 @@ class MainBot:
                             sel_date.month,
                             clamp_date(sel_date),
                             clamp_date(sel_date.replace(year=sel_date.year + 2)),
+                            unavailable_dates=unavailable,
                         ),
                     )
                     await query.answer()
@@ -1553,7 +1569,21 @@ class MainBot:
                     parts = payload.split("-")
                     y = int(parts[0])
                     m = int(parts[1]) if len(parts) > 1 else 1
-                kb = month_keyboard(y, m, clamp_date(datetime.today().date()), clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)))
+                # try to compute unavailable dates for navigation if we're in booking flow
+                unavailable = None
+                if state in (self.BOOKING_STATES["ENTERING_DATE_FROM"], self.BOOKING_STATES["ENTERING_DATE_TO"]) and data.get("equipment_id"):
+                    unavailable = set()
+                    async with AsyncSessionLocal() as session:
+                        for d in range(1, 32):
+                            try:
+                                candidate = datetime(y, m, d).date()
+                            except Exception:
+                                break
+                            aq = await self.booking_service.get_available_quantity(session, data["equipment_id"], datetime(candidate.year, candidate.month, candidate.day), datetime(candidate.year, candidate.month, candidate.day))
+                            if aq <= 0:
+                                unavailable.add(candidate)
+
+                kb = month_keyboard(y, m, clamp_date(datetime.today().date()), clamp_date(datetime.today().date().replace(year=datetime.now().year + 2)), unavailable_dates=unavailable)
                 await query.message.edit_reply_markup(reply_markup=kb)
                 await query.answer()
                 return

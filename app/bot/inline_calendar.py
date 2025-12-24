@@ -4,7 +4,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from typing import Tuple
 
 
-def _format_day(d: date, disabled: bool) -> str:
+def _format_day(d: date, disabled: bool, unavailable: bool = False) -> str:
+    if unavailable:
+        return "❌"
     return f"{d.day:02d}" if not disabled else "—"
 
 
@@ -14,6 +16,7 @@ def month_keyboard(
     min_date: date,
     max_date: date,
     *,
+    unavailable_dates: set[date] | None = None,
     include_cancel: bool = True,
     cancel_text: str = "⬅️ Назад",
 ) -> InlineKeyboardMarkup:
@@ -32,7 +35,7 @@ def month_keyboard(
     keyboard.append([InlineKeyboardButton(f"{month_name} {year}", callback_data="ignore")])
 
     # Weekday header
-    headers = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    headers = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     keyboard.append([InlineKeyboardButton(h, callback_data="ignore") for h in headers])
 
     # Fill days
@@ -46,12 +49,17 @@ def month_keyboard(
     for d in range(1, days_in_month + 1):
         current = date(year, month, d)
         disabled = current < min_date or current > max_date or current < date.today()
+        unavailable = False
+        if unavailable_dates and current in unavailable_dates:
+            unavailable = True
+            disabled = True
+
         if disabled:
-            week.append(InlineKeyboardButton(_format_day(current, True), callback_data="ignore"))
+            week.append(InlineKeyboardButton(_format_day(current, True, unavailable), callback_data="ignore"))
         else:
             # Use dd.mm.yyyy format in callback so bot logic expecting that format works
             cb = f"cal_select:{current.strftime('%d.%m.%Y')}"
-            week.append(InlineKeyboardButton(_format_day(current, False), callback_data=cb))
+            week.append(InlineKeyboardButton(_format_day(current, False, unavailable), callback_data=cb))
 
         if len(week) == 7:
             keyboard.append(week)
